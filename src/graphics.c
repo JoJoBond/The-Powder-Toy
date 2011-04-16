@@ -15,15 +15,16 @@
 #include <defines.h>
 #include <air.h>
 #include <powder.h>
+#include <renderer.h>
 #include <graphics.h>
 #define INCLUDE_FONTDATA
 #include <font.h>
 #include <misc.h>
 
-
 unsigned cmode = CM_FIRE;
 SDL_Surface *sdl_scrn;
 int sdl_scale = 1;
+unsigned int frame_idx;
 
 unsigned char fire_r[YRES/CELL][XRES/CELL];
 unsigned char fire_g[YRES/CELL][XRES/CELL];
@@ -31,7 +32,6 @@ unsigned char fire_b[YRES/CELL][XRES/CELL];
 
 unsigned int fire_alpha[CELL*3][CELL*3];
 pixel *fire_bg;
-pixel *pers_bg;
 
 pixel *rescale_img(pixel *src, int sw, int sh, int *qw, int *qh, int f)
 {
@@ -68,64 +68,6 @@ pixel *rescale_img(pixel *src, int sw, int sh, int *qw, int *qh, int f)
 	*qw = w;
 	*qh = h;
 	return q;
-}
-
-void sdl_blit_1(int x, int y, int w, int h, pixel *src, int pitch)
-{
-	pixel *dst;
-	int j;
-	if (SDL_MUSTLOCK(sdl_scrn))
-		if (SDL_LockSurface(sdl_scrn)<0)
-			return;
-	dst=(pixel *)sdl_scrn->pixels+y*sdl_scrn->pitch/PIXELSIZE+x;
-	for (j=0; j<h; j++)
-	{
-		memcpy(dst, src, w*PIXELSIZE);
-		dst+=sdl_scrn->pitch/PIXELSIZE;
-		src+=pitch;
-	}
-	if (SDL_MUSTLOCK(sdl_scrn))
-		SDL_UnlockSurface(sdl_scrn);
-	SDL_UpdateRect(sdl_scrn,0,0,0,0);
-}
-
-void sdl_blit_2(int x, int y, int w, int h, pixel *src, int pitch)
-{
-	pixel *dst;
-	int j;
-	int i,k;
-	if (SDL_MUSTLOCK(sdl_scrn))
-		if (SDL_LockSurface(sdl_scrn)<0)
-			return;
-	dst=(pixel *)sdl_scrn->pixels+y*sdl_scrn->pitch/PIXELSIZE+x;
-	for (j=0; j<h; j++)
-	{
-		for (k=0; k<sdl_scale; k++)
-		{
-			for (i=0; i<w; i++)
-			{
-				dst[i*2]=src[i];
-				dst[i*2+1]=src[i];
-			}
-			dst+=sdl_scrn->pitch/PIXELSIZE;
-		}
-		src+=pitch;
-	}
-	if (SDL_MUSTLOCK(sdl_scrn))
-		SDL_UnlockSurface(sdl_scrn);
-	SDL_UpdateRect(sdl_scrn,0,0,0,0);
-}
-
-void sdl_blit(int x, int y, int w, int h, pixel *src, int pitch)
-{
-#ifdef OpenGL
-	RenderScene();
-#else
-	if (sdl_scale == 2)
-		sdl_blit_2(x, y, w, h, src, pitch);
-	else
-		sdl_blit_1(x, y, w, h, src, pitch);
-#endif
 }
 
 //an easy way to draw a blob
@@ -205,12 +147,12 @@ void draw_tool(pixel *vid_buf, int b, int sl, int sr, unsigned pc, unsigned iswa
 				for (i=1; i<27; i++)
 				{
 					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = i==1||i==26||j==1||j==14 ? PIXPACK(0xA0A0A0) : PIXPACK(0x000000);
-					drawtext(vid_buf, x+4, y+3, "\x8D", 255, 255, 255, 255);
+					Graphics_RenderText(x+4, y+3, "\x8D", 255, 255, 255, 255);
 				}
 			}
 			for (i=9; i<27; i++)
 			{
-				drawpixel(vid_buf, x+i, y+8+(int)(3.9f*cos(i*0.3f)), 255, 255, 255, 255);
+				Renderer_BlendPixel(x+i, y+8+(int)(3.9f*cos(i*0.3f)), 255, 255, 255, 255);
 			}
 			break;
 		case 26:
@@ -221,8 +163,8 @@ void draw_tool(pixel *vid_buf, int b, int sl, int sr, unsigned pc, unsigned iswa
 					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = i==1||i==26||j==1||j==14 ? PIXPACK(0xA0A0A0) : PIXPACK(0x000000);
 				}
 			}
-			drawtext(vid_buf, x+9, y+3, "\xA1", 32, 64, 128, 255);
-			drawtext(vid_buf, x+9, y+3, "\xA0", 255, 255, 255, 255);
+			Graphics_RenderText(x+9, y+3, "\xA1", 32, 64, 128, 255);
+			Graphics_RenderText(x+9, y+3, "\xA0", 255, 255, 255, 255);
 			break;
 		case 27:
 			for (j=1; j<15; j+=2)
@@ -317,7 +259,7 @@ void draw_tool(pixel *vid_buf, int b, int sl, int sr, unsigned pc, unsigned iswa
 			{
 				c = 0;
 			}
-			drawtext(vid_buf, x+14-textwidth("AIR")/2, y+4, "AIR", c, c, c, 255);
+			Graphics_RenderTextx+14-GetTextWidth("AIR")/2, y+4, "AIR", c, c, c, 255);
 			break;
 		case 37:
 			for (j=1; j<15; j++)
@@ -336,7 +278,7 @@ void draw_tool(pixel *vid_buf, int b, int sl, int sr, unsigned pc, unsigned iswa
 			{
 				c = 0;
 			}
-			drawtext(vid_buf, x+14-textwidth("HEAT")/2, y+4, "HEAT", c, c, c, 255);
+			Graphics_RenderText(x+14-GetTextWidth("HEAT")/2, y+4, "HEAT", c, c, c, 255);
 			break;
 		case 38:
 			for (j=1; j<15; j++)
@@ -355,7 +297,7 @@ void draw_tool(pixel *vid_buf, int b, int sl, int sr, unsigned pc, unsigned iswa
 			{
 				c = 0;
 			}
-			drawtext(vid_buf, x+14-textwidth("COOL")/2, y+4, "COOL", c, c, c, 255);
+			Graphics_RenderText(x+14-GetTextWidth("COOL")/2, y+4, "COOL", c, c, c, 255);
 			break;
 		case 39:
 			for (j=1; j<15; j++)
@@ -374,7 +316,7 @@ void draw_tool(pixel *vid_buf, int b, int sl, int sr, unsigned pc, unsigned iswa
 			{
 				c = 0;
 			}
-			drawtext(vid_buf, x+14-textwidth("VAC")/2, y+4, "VAC", c, c, c, 255);
+			Graphics_RenderText(x+14-GetTextWidth("VAC")/2, y+4, "VAC", c, c, c, 255);
 			break;
 		default:
 			for (j=1; j<15; j++)
@@ -426,7 +368,7 @@ void draw_tool(pixel *vid_buf, int b, int sl, int sr, unsigned pc, unsigned iswa
 		{
 			c = 0;
 		}
-		drawtext(vid_buf, x+14-textwidth((char *)ptypes[b].name)/2, y+4, (char *)ptypes[b].name, c, c, c, 255);
+		Graphics_RenderText(x+14-GetTextWidth((char *)ptypes[b].name)/2, y+4, (char *)ptypes[b].name, c, c, c, 255);
 	}
 	if (bo==sl || bo==sr)
 	{
@@ -448,8 +390,9 @@ void draw_tool(pixel *vid_buf, int b, int sl, int sr, unsigned pc, unsigned iswa
 	}
 }
 */
+
 //draw walls
-int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
+int Graphics_RenderToolsXY(int x, int y, int b, unsigned pc)
 {
 	int i, j, c;
 	if (x > XRES-26 || x < 0)
@@ -468,11 +411,11 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 				{
 					if (!(i%2) && !(j%2))
 					{
-						vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+						Renderer_DrawPixel(x+i, y+j, pc);
 					}
 					else
 					{
-						vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = PIXPACK(0x808080);
+						Renderer_DrawPixel(x+i, y+j, PIXPACK(0x808080));
 					}
 				}
 			}
@@ -484,14 +427,14 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 				{
 					if (!(i&j&1))
 					{
-						vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+						Renderer_DrawPixel(x+i, y+j, pc);
 					}
 				}
 				for (; i<27; i++)
 				{
 					if (i&j&1)
 					{
-						vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+						Renderer_DrawPixel(x+i, y+j, pc);
 					}
 				}
 			}
@@ -501,7 +444,7 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				for (i=1+(1&(j>>1)); i<27; i+=2)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+					Renderer_DrawPixel(x+i, y+j, pc);
 				}
 			}
 			break;
@@ -510,32 +453,32 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				for (i=1; i<27; i++)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = i==1||i==26||j==1||j==14 ? PIXPACK(0xA0A0A0) : PIXPACK(0x000000);
-					drawtext(vid_buf, x+4, y+3, "\x8D", 255, 255, 255, 255);
+					Renderer_DrawPixel(x+i, y+j, i==1||i==26||j==1||j==14 ? PIXPACK(0xA0A0A0) : PIXPACK(0x000000));
+                    Graphics_RenderText(x+4, y+3, "\x8D", 255, 255, 255, 255);
 				}
 			}
 			for (i=9; i<27; i++)
 			{
-				drawpixel(vid_buf, x+i, y+8+(int)(3.9f*cos(i*0.3f)), 255, 255, 255, 255);
-			}
+				Renderer_DrawPixel(x+i, y+8+(int)(3.9f*cos(i*0.3f)), PIXPACK(0xFFFFFF));
+           }
 			break;
 		case WL_SIGN:
 			for (j=1; j<15; j++)
 			{
 				for (i=1; i<27; i++)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = i==1||i==26||j==1||j==14 ? PIXPACK(0xA0A0A0) : PIXPACK(0x000000);
-				}
+					Renderer_DrawPixel(x+i, y+j, i==1||i==26||j==1||j==14 ? PIXPACK(0xA0A0A0) : PIXPACK(0x000000));
+                }
 			}
-			drawtext(vid_buf, x+9, y+3, "\xA1", 32, 64, 128, 255);
-			drawtext(vid_buf, x+9, y+3, "\xA0", 255, 255, 255, 255);
-			break;
+			Graphics_RenderText(x+9, y+3, "\xA1", 32, 64, 128, 255);
+            Graphics_RenderText(x+9, y+3, "\xA0", 255, 255, 255, 255);
+            break;
 		case WL_FAN:
 			for (j=1; j<15; j+=2)
 			{
 				for (i=1+(1&(j>>1)); i<27; i+=2)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+					Renderer_DrawPixel(x+i, y+j, pc);
 				}
 			}
 			break;
@@ -546,7 +489,7 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 				{
 					if (!(i%2) && !(j%2))
 					{
-						vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+						Renderer_DrawPixel(x+i, y+j, pc);
 					}
 				}
 			}
@@ -556,7 +499,7 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				for (i=1+(1&(j>>1)); i<27; i+=2)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+					Renderer_DrawPixel(x+i, y+j, pc);
 				}
 			}
 			break;
@@ -565,14 +508,14 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				for (i=1+(1&(j>>1)); i<13; i+=2)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+					Renderer_DrawPixel(x+i, y+j, pc);
 				}
 			}
 			for (j=1; j<15; j++)
 			{
 				for (i=14; i<27; i++)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+					Renderer_DrawPixel(x+i, y+j, pc);
 				}
 			}
 			break;
@@ -581,7 +524,7 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				for (i=1+(1&(j>>1)); i<27; i+=2)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+					Renderer_DrawPixel(x+i, y+j, pc);
 				}
 			}
 			break;
@@ -590,7 +533,7 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				for (i=1+(1&(j>>1)); i<27; i+=2)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+					Renderer_DrawPixel(x+i, y+j, pc);
 				}
 			}
 			break;
@@ -601,20 +544,14 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 				{
 					if (!(i%2) && !(j%2))
 					{
-						vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+						Renderer_DrawPixel(x+i, y+j, pc);
 					}
 				}
 			}
 			break;
 		case SPC_AIR-100:
-			for (j=1; j<15; j++)
-			{
-				for (i=1; i<27; i++)
-				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
-				}
-			}
-			c = PIXR(pc) + 3*PIXG(pc) + 2*PIXB(pc);
+			Renderer_FillRectangle(x, y, 27, 15, PIXR(pc), PIXG(pc), PIXB(pc), 255);
+            c = PIXR(pc) + 3*PIXG(pc) + 2*PIXB(pc);
 			if (c<544)
 			{
 				c = 255;
@@ -623,17 +560,11 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				c = 0;
 			}
-			drawtext(vid_buf, x+14-textwidth("AIR")/2, y+4, "AIR", c, c, c, 255);
-			break;
+			Graphics_RenderText(x+14-GetTextWidth("AIR")/2, y+4, "AIR", c, c, c, 255);
+            break;
 		case SPC_HEAT-100:
-			for (j=1; j<15; j++)
-			{
-				for (i=1; i<27; i++)
-				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
-				}
-			}
-			c = PIXR(pc) + 3*PIXG(pc) + 2*PIXB(pc);
+			Renderer_FillRectangle(x, y, 27, 15, PIXR(pc), PIXG(pc), PIXB(pc), 255);
+            c = PIXR(pc) + 3*PIXG(pc) + 2*PIXB(pc);
 			if (c<544)
 			{
 				c = 255;
@@ -642,17 +573,11 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				c = 0;
 			}
-			drawtext(vid_buf, x+14-textwidth("HEAT")/2, y+4, "HEAT", c, c, c, 255);
-			break;
+			Graphics_RenderText(x+14-GetTextWidth("HEAT")/2, y+4, "HEAT", c, c, c, 255);
+            break;
 		case SPC_COOL-100:
-			for (j=1; j<15; j++)
-			{
-				for (i=1; i<27; i++)
-				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
-				}
-			}
-			c = PIXR(pc) + 3*PIXG(pc) + 2*PIXB(pc);
+			Renderer_FillRectangle(x, y, 27, 15, PIXR(pc), PIXG(pc), PIXB(pc), 255);
+            c = PIXR(pc) + 3*PIXG(pc) + 2*PIXB(pc);
 			if (c<544)
 			{
 				c = 255;
@@ -661,17 +586,11 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				c = 0;
 			}
-			drawtext(vid_buf, x+14-textwidth("COOL")/2, y+4, "COOL", c, c, c, 255);
-			break;
+			Graphics_RenderText(x+14-GetTextWidth("COOL")/2, y+4, "COOL", c, c, c, 255);
+            break;
 		case SPC_VACUUM-100:
-			for (j=1; j<15; j++)
-			{
-				for (i=1; i<27; i++)
-				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
-				}
-			}
-			c = PIXR(pc) + 3*PIXG(pc) + 2*PIXB(pc);
+			Renderer_FillRectangle(x, y, 27, 15, PIXR(pc), PIXG(pc), PIXB(pc), 255);
+            c = PIXR(pc) + 3*PIXG(pc) + 2*PIXB(pc);
 			if (c<544)
 			{
 				c = 255;
@@ -680,34 +599,28 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 			{
 				c = 0;
 			}
-			drawtext(vid_buf, x+14-textwidth("VAC")/2, y+4, "VAC", c, c, c, 255);
-			break;
+			Graphics_RenderText(x+14-GetTextWidth("VAC")/2, y+4, "VAC", c, c, c, 255);
+            break;
 		case WL_ALLOWGAS:
 			for (j=1; j<15; j+=2)
 			{
 				for (i=1+(1&(j>>1)); i<27; i+=2)
 				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
+					Renderer_DrawPixel(x+i, y+j, pc);
 				}
 			}
 			break;
 		default:
-			for (j=1; j<15; j++)
-			{
-				for (i=1; i<27; i++)
-				{
-					vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
-				}
-			}
+			Renderer_FillRectangle(x, y, 27, 15, PIXR(pc), PIXG(pc), PIXB(pc), 255);
 		}
 		if (b==WL_ERASE)
 		{
 			for (j=4; j<12; j++)
 			{
-				vid_buf[(XRES+BARSIZE)*(y+j)+(x+j+6)] = PIXPACK(0xFF0000);
-				vid_buf[(XRES+BARSIZE)*(y+j)+(x+j+7)] = PIXPACK(0xFF0000);
-				vid_buf[(XRES+BARSIZE)*(y+j)+(x-j+21)] = PIXPACK(0xFF0000);
-				vid_buf[(XRES+BARSIZE)*(y+j)+(x-j+22)] = PIXPACK(0xFF0000);
+                Renderer_DrawPixel(x+j+6, y+j, PIXPACK(0xFF0000));
+                Renderer_DrawPixel(x+j+7, y+j, PIXPACK(0xFF0000));
+                Renderer_DrawPixel(x-j+21, y+j, PIXPACK(0xFF0000));
+                Renderer_DrawPixel(x-j+22, y+j, PIXPACK(0xFF0000));
 			}
 		}
 	}
@@ -715,64 +628,46 @@ int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc)
 	{
 		//x = 2+32*(b/2);
 		//y = YRES+2+20*(b%2);
-#ifdef OpenGL
-		fillrect(vid_buf, x, y, 28, 16, PIXR(pc), PIXG(pc), PIXB(pc), 255);
-#else
-		for (j=1; j<15; j++)
-		{
-			for (i=1; i<27; i++)
-			{
-				vid_buf[(XRES+BARSIZE)*(y+j)+(x+i)] = pc;
-			}
-		}
-#endif
-		if (b==0)
+		Renderer_FillRectangle(x, y, 27, 15, PIXR(pc), PIXG(pc), PIXB(pc), 255);
+        if (b==0)
 		{
 			for (j=4; j<12; j++)
 			{
-				vid_buf[(XRES+BARSIZE)*(y+j)+(x+j+6)] = PIXPACK(0xFF0000);
-				vid_buf[(XRES+BARSIZE)*(y+j)+(x+j+7)] = PIXPACK(0xFF0000);
-				vid_buf[(XRES+BARSIZE)*(y+j)+(x-j+21)] = PIXPACK(0xFF0000);
-				vid_buf[(XRES+BARSIZE)*(y+j)+(x-j+22)] = PIXPACK(0xFF0000);
-			}
+				Renderer_DrawPixel(x+j+6, y+j, PIXPACK(0xFF0000));
+                Renderer_DrawPixel(x+j+7, y+j, PIXPACK(0xFF0000));
+                Renderer_DrawPixel(x-j+21, y+j, PIXPACK(0xFF0000));
+                Renderer_DrawPixel(x-j+22, y+j, PIXPACK(0xFF0000));
+            }
 		}
 		c = PIXB(ptypes[b].pcolors) + 3*PIXG(ptypes[b].pcolors) + 2*PIXR(ptypes[b].pcolors);
 		if (c<544)
-		{
 			c = 255;
-		}
 		else
-		{
 			c = 0;
-		}
-		drawtext(vid_buf, x+14-textwidth((char *)ptypes[b].name)/2, y+4, (char *)ptypes[b].name, c, c, c, 255);
-	}
+		Graphics_RenderText(x+14-GetTextWidth((char *)ptypes[b].name)/2, y+4, (char *)ptypes[b].name, c, c, c, 255);
+    }
 	return 26;
 }
 
-void draw_menu(pixel *vid_buf, int i, int hover)
+void Graphics_RenderMenu(int i, int hover)
 {
 	if (i==SEC&&SEC!=0)
-		drawrect(vid_buf, (XRES+BARSIZE)-16, (i*16)+YRES+MENUSIZE-16-(SC_TOTAL*16), 14, 14, 0, 255, 255, 255);
+		Renderer_DrawRectangle((XRES+BARSIZE)-16, (i*16)+YRES+MENUSIZE-16-(SC_TOTAL*16), 14, 14, 0, 255, 255, 255);
 	else
-		drawrect(vid_buf, (XRES+BARSIZE)-16, (i*16)+YRES+MENUSIZE-16-(SC_TOTAL*16), 14, 14, 255, 255, 255, 255);
+		Renderer_DrawRectangle((XRES+BARSIZE)-16, (i*16)+YRES+MENUSIZE-16-(SC_TOTAL*16), 14, 14, 255, 255, 255, 255);
 	if (hover==i)
 	{
-		fillrect(vid_buf, (XRES+BARSIZE)-16, (i*16)+YRES+MENUSIZE-16-(SC_TOTAL*16), 14, 14, 255, 255, 255, 255);
-		drawtext(vid_buf, (XRES+BARSIZE)-13, (i*16)+YRES+MENUSIZE-14-(SC_TOTAL*16), msections[i].icon, 0, 0, 0, 255);
+		Renderer_FillRectangle((XRES+BARSIZE)-16, (i*16)+YRES+MENUSIZE-16-(SC_TOTAL*16), 14, 14, 255, 255, 255, 255);
+		Graphics_RenderText((XRES+BARSIZE)-13, (i*16)+YRES+MENUSIZE-14-(SC_TOTAL*16), msections[i].icon, 0, 0, 0, 255);
 	}
 	else
 	{
-		drawtext(vid_buf, (XRES+BARSIZE)-13, (i*16)+YRES+MENUSIZE-14-(SC_TOTAL*16), msections[i].icon, 255, 255, 255, 255);
+		Graphics_RenderText((XRES+BARSIZE)-13, (i*16)+YRES+MENUSIZE-14-(SC_TOTAL*16), msections[i].icon, 255, 255, 255, 255);
 	}
 }
 
 //draws a pixel, identical to blendpixel(), except blendpixel has OpenGL support
-#if defined(WIN32) && !defined(__GNUC__)
-_inline void drawpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
-#else
-inline void drawpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
-#endif
+_INLINE_ void drawpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 {
 	pixel t;
 	if (x<0 || y<0 || x>=XRES+BARSIZE || y>=YRES+MENUSIZE)
@@ -787,34 +682,8 @@ inline void drawpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 	vid[y*(XRES+BARSIZE)+x] = PIXRGB(r,g,b);
 }
 
-#if defined(WIN32) && !defined(__GNUC__)
-_inline int drawchar(pixel *vid, int x, int y, int c, int r, int g, int b, int a)
-#else
-inline int drawchar(pixel *vid, int x, int y, int c, int r, int g, int b, int a)
-#endif
+int Graphics_RenderText(int x, int y, const char *s, int r, int g, int b, int a)
 {
-	int i, j, w, bn = 0, ba = 0;
-	char *rp = font_data + font_ptrs[c];
-	w = *(rp++);
-	for (j=0; j<FONT_H; j++)
-		for (i=0; i<w; i++)
-		{
-			if (!bn)
-			{
-				ba = *(rp++);
-				bn = 8;
-			}
-			drawpixel(vid, x+i, y+j, r, g, b, ((ba&3)*a)/3);
-			ba >>= 2;
-			bn -= 2;
-		}
-	return x + w;
-}
-
-int drawtext(pixel *vid, int x, int y, const char *s, int r, int g, int b, int a)
-{
-#ifdef OpenGL
-#else
 	int sx = x;
 	for (; *s; s++)
 	{
@@ -850,15 +719,13 @@ int drawtext(pixel *vid, int x, int y, const char *s, int r, int g, int b, int a
 			s++;
 		}
 		else
-			x = drawchar(vid, x, y, *(unsigned char *)s, r, g, b, a);
+			x = Renderer_DrawChar(x, y, *(unsigned char *)s, r, g, b, a);
 	}
-#endif
 	return x;
 }
-int drawtextwrap(pixel *vid, int x, int y, int w, const char *s, int r, int g, int b, int a)
+
+int Graphics_RenderWrapText(int x, int y, int w, const char *s, int r, int g, int b, int a)
 {
-#ifdef OpenGL
-#else
 	int sx = x;
 	int rh = 12;
 	int rw = 0;
@@ -868,7 +735,7 @@ int drawtextwrap(pixel *vid, int x, int y, int w, const char *s, int r, int g, i
 	while (*s)
 	{
 		wordlen = strcspn(s," .,!?\n");
-		charspace = textwidthx(s, w-(x-cw));
+		charspace = GetTextWidthX((char *)s, w-(x-cw));
 		if (charspace<wordlen && wordlen && w-(x-cw)<w/3)
 		{
 			x = sx;
@@ -920,83 +787,14 @@ int drawtextwrap(pixel *vid, int x, int y, int w, const char *s, int r, int g, i
 					y+=FONT_H+2;
 					rh+=FONT_H+2;
 				}
-				x = drawchar(vid, x, y, *(unsigned char *)s, r, g, b, a);
+				x = Renderer_DrawChar(x, y, *(unsigned char *)s, r, g, b, a);
 			}
 		}
 	}
-#endif
 	return rh;
 }
 
-//draws a rectange, (x,y) are the top left coords.
-void drawrect(pixel *vid, int x, int y, int w, int h, int r, int g, int b, int a)
-{
-#ifdef OpenGL
-	glBegin(GL_LINE_LOOP);
-	glColor4ub(r, g, b, a);
-	glVertex2i(x, y);
-	glVertex2i(x+w, y);
-	glVertex2i(x+w, y+h);
-	glVertex2i(x, y+h);
-	glEnd();
-#else
-	int i;
-	for (i=0; i<=w; i++)
-	{
-		drawpixel(vid, x+i, y, r, g, b, a);
-		drawpixel(vid, x+i, y+h, r, g, b, a);
-	}
-	for (i=1; i<h; i++)
-	{
-		drawpixel(vid, x, y+i, r, g, b, a);
-		drawpixel(vid, x+w, y+i, r, g, b, a);
-	}
-#endif
-}
-
-//draws a rectangle and fills it in as well.
-void fillrect(pixel *vid, int x, int y, int w, int h, int r, int g, int b, int a)
-{
-#ifdef OpenGL
-	glBegin(GL_QUADS);
-	glColor4ub(r, g, b, a);
-	glVertex2i(x, y);
-	glVertex2i(x+w, y);
-	glVertex2i(x+w, y+h);
-	glVertex2i(x, y+h);
-	glEnd();
-#else
-	int i,j;
-	for (j=1; j<h; j++)
-		for (i=1; i<w; i++)
-			drawpixel(vid, x+i, y+j, r, g, b, a);
-#endif // OpenGL
-}
-
-void clearrect(pixel *vid, int x, int y, int w, int h)
-{
-	int i;
-	for (i=1; i<h; i++)
-		memset(vid+(x+1+(XRES+BARSIZE)*(y+i)), 0, PIXELSIZE*(w-1));
-}
-//draws a line of dots, where h is the height. (why is this even here)
-void drawdots(pixel *vid, int x, int y, int h, int r, int g, int b, int a)
-{
-#ifdef OpenGL
-	int i;
-	glBegin(GL_QUADS);
-	glColor4ub(r, g, b, a);
-	for (i = 0; i <= h; i +=2)
-		glVertex2i(x, y+i);
-	glEnd();
-#else
-	int i;
-	for (i=0; i<=h; i+=2)
-		drawpixel(vid, x, y+i, r, g, b, a);
-#endif //OpenGL
-}
-
-int textwidth(char *s)
+int GetTextWidth(char *s)
 {
 	int x = 0;
 	for (; *s; s++)
@@ -1004,23 +802,23 @@ int textwidth(char *s)
 	return x-1;
 }
 
-int drawtextmax(pixel *vid, int x, int y, int w, char *s, int r, int g, int b, int a)
+int Graphics_RenderMaxText(int x, int y, int w, char *s, int r, int g, int b, int a)
 {
 	int i;
 	w += x-5;
 	for (; *s; s++)
 	{
-		if (x+font_data[font_ptrs[(int)(*(unsigned char *)s)]]>=w && x+textwidth(s)>=w+5)
+		if (x+font_data[font_ptrs[(int)(*(unsigned char *)s)]]>=w && x+GetTextWidth(s)>=w+5)
 			break;
-		x = drawchar(vid, x, y, *(unsigned char *)s, r, g, b, a);
+		x = Renderer_DrawChar(x, y, *(unsigned char *)s, r, g, b, a);
 	}
 	if (*s)
 		for (i=0; i<3; i++)
-			x = drawchar(vid, x, y, '.', r, g, b, a);
+			x = Renderer_DrawChar(x, y, '.', r, g, b, a);
 	return x;
 }
 
-int textnwidth(char *s, int n)
+int GetTextNWidth(char *s, int n)
 {
 	int x = 0;
 	for (; *s; s++)
@@ -1032,7 +830,8 @@ int textnwidth(char *s, int n)
 	}
 	return x-1;
 }
-void textnpos(char *s, int n, int w, int *cx, int *cy)
+
+void GetTextNPos(char *s, int n, int w, int *cx, int *cy)
 {
 	int x = 0;
 	int y = 0;
@@ -1040,7 +839,7 @@ void textnpos(char *s, int n, int w, int *cx, int *cy)
 	while (*s&&n)
 	{
 		wordlen = strcspn(s," .,!?\n");
-		charspace = textwidthx(s, w-x);
+		charspace = GetTextWidthX(s, w-x);
 		if (charspace<wordlen && wordlen && w-x<w/3)
 		{
 			x = 0;
@@ -1064,7 +863,7 @@ void textnpos(char *s, int n, int w, int *cx, int *cy)
 	*cy = y;
 }
 
-int textwidthx(char *s, int w)
+int GetTextWidthX(char *s, int w)
 {
 	int x=0,n=0,cw;
 	for (; *s; s++)
@@ -1077,13 +876,14 @@ int textwidthx(char *s, int w)
 	}
 	return n;
 }
-int textposxy(char *s, int width, int w, int h)
+
+int GetTextPosXY(char *s, int width, int w, int h)
 {
 	int x=0,y=0,n=0,cw, wordlen, charspace;
 	while (*s)
 	{
 		wordlen = strcspn(s," .,!?\n");
-		charspace = textwidthx(s, width-x);
+		charspace = GetTextWidthX(s, width-x);
 		if (charspace<wordlen && wordlen && width-x<width/3)
 		{
 			x = 0;
@@ -1104,7 +904,8 @@ int textposxy(char *s, int width, int w, int h)
 	}
 	return n;
 }
-int textwrapheight(char *s, int width)
+
+int GetTextWrapHeight(char *s, int width)
 {
 	int x=0, height=FONT_H+2, cw;
 	int wordlen;
@@ -1112,7 +913,7 @@ int textwrapheight(char *s, int width)
 	while (*s)
 	{
 		wordlen = strcspn(s," .,!?\n");
-		charspace = textwidthx(s, width-x);
+		charspace = GetTextWidthX(s, width-x);
 		if (charspace<wordlen && wordlen && width-x<width/3)
 		{
 			x = 0;
@@ -1145,11 +946,7 @@ int textwrapheight(char *s, int width)
 }
 
 //the most used function for drawing a pixel, because it has OpenGL support, which is not fully implemented.
-#if defined(WIN32) && !defined(__GNUC__)
-_inline void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
-#else
-inline void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
-#endif
+_INLINE_ void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 {
 #ifdef OpenGL
 	if (x<0 || y<0 || x>=XRES || r>=YRES)
@@ -1176,20 +973,20 @@ inline void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 #endif //OpenGL
 }
 
-void draw_icon(pixel *vid_buf, int x, int y, char ch, int flag)
+void Graphics_RenderIcon(int x, int y, char ch, int flag)
 {
 	char t[2];
 	t[0] = ch;
 	t[1] = 0;
 	if (flag)
 	{
-		fillrect(vid_buf, x-1, y-1, 17, 17, 255, 255, 255, 255);
-		drawtext(vid_buf, x+3, y+2, t, 0, 0, 0, 255);
+		Renderer_FillRectangle(x-1, y-1, 17, 17, 255, 255, 255, 255);
+        Graphics_RenderText(x+3, y+2, t, 0, 0, 0, 255);
 	}
 	else
 	{
-		drawrect(vid_buf, x, y, 15, 15, 255, 255, 255, 255);
-		drawtext(vid_buf, x+3, y+2, t, 255, 255, 255, 255);
+		Renderer_DrawRectangle(x, y, 15, 15, 255, 255, 255, 255);
+        Graphics_RenderText(x+3, y+2, t, 255, 255, 255, 255);
 	}
 }
 
@@ -1255,46 +1052,6 @@ void draw_air(pixel *vid)
 		}
 }
 
-void draw_line(pixel *vid, int x1, int y1, int x2, int y2, int r, int g, int b, int a)  //Draws a line
-{
-	int dx, dy, i, sx, sy, check, e, x, y;
-
-	dx = abs(x1-x2);
-	dy = abs(y1-y2);
-	sx = isign(x2-x1);
-	sy = isign(y2-y1);
-	x = x1;
-	y = y1;
-	check = 0;
-
-	if (dy>dx)
-	{
-		dx = dx+dy;
-		dy = dx-dy;
-		dx = dx-dy;
-		check = 1;
-	}
-
-	e = (dy<<2)-dx;
-	for (i=0; i<=dx; i++)
-	{
-		vid[x+y*a] =PIXRGB(r, g, b);
-		if (e>=0)
-		{
-			if (check==1)
-				x = x+sx;
-			else
-				y = y+sy;
-			e = e-(dx<<2);
-		}
-		if (check==1)
-			y = y+sy;
-		else
-			x = x+sx;
-		e = e+(dy<<2);
-	}
-}
-
 //adds color to a pixel, does not overwrite.
 void addpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 {
@@ -1314,85 +1071,8 @@ void addpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 	vid[y*(XRES+BARSIZE)+x] = PIXRGB(r,g,b);
 }
 
-//draws one of two colors, so that it is always clearly visible
-void xor_pixel(int x, int y, pixel *vid)
-{
-	int c;
-	if (x<0 || y<0 || x>=XRES || y>=YRES)
-		return;
-	c = vid[y*(XRES+BARSIZE)+x];
-	c = PIXB(c) + 3*PIXG(c) + 2*PIXR(c);
-	if (c<512)
-		vid[y*(XRES+BARSIZE)+x] = PIXPACK(0xC0C0C0);
-	else
-		vid[y*(XRES+BARSIZE)+x] = PIXPACK(0x404040);
-}
-
-//same as xor_pixel, but draws a line of it
-void xor_line(int x1, int y1, int x2, int y2, pixel *vid)
-{
-	int cp=abs(y2-y1)>abs(x2-x1), x, y, dx, dy, sy;
-	float e, de;
-	if (cp)
-	{
-		y = x1;
-		x1 = y1;
-		y1 = y;
-		y = x2;
-		x2 = y2;
-		y2 = y;
-	}
-	if (x1 > x2)
-	{
-		y = x1;
-		x1 = x2;
-		x2 = y;
-		y = y1;
-		y1 = y2;
-		y2 = y;
-	}
-	dx = x2 - x1;
-	dy = abs(y2 - y1);
-	e = 0.0f;
-	if (dx)
-		de = dy/(float)dx;
-	else
-		de = 0.0f;
-	y = y1;
-	sy = (y1<y2) ? 1 : -1;
-	for (x=x1; x<=x2; x++)
-	{
-		if (cp)
-			xor_pixel(y, x, vid);
-		else
-			xor_pixel(x, y, vid);
-		e += de;
-		if (e >= 0.5f)
-		{
-			y += sy;
-			e -= 1.0f;
-		}
-	}
-}
-
-//same as xor_pixel, but draws a rectangle
-void xor_rect(pixel *vid, int x, int y, int w, int h)
-{
-	int i;
-	for (i=0; i<w; i+=2)
-	{
-		xor_pixel(x+i, y, vid);
-		xor_pixel(x+i, y+h-1, vid);
-	}
-	for (i=2; i<h; i+=2)
-	{
-		xor_pixel(x, y+i, vid);
-		xor_pixel(x+w-1, y+i, vid);
-	}
-}
-
 //the main function for drawing the particles
-void draw_parts(pixel *vid)
+void Graphics_RenderParticles()
 {
 	int i, x, y, t, nx, ny, r, s;
 	int orbd[4] = {0, 0, 0, 0};
@@ -1402,70 +1082,17 @@ void draw_parts(pixel *vid)
 	float pt = R_TEMP;
 	if (GRID_MODE)//draws the grid
 	{
+		//Do with DrawLine !!
 		for (ny=0; ny<YRES; ny++)
 			for (nx=0; nx<XRES; nx++)
 			{
 				if (ny%(4*GRID_MODE)==0)
-					blendpixel(vid, nx, ny, 100, 100, 100, 80);
+					Renderer_BlendPixel(nx, ny, 100, 100, 100, 80);
 				if (nx%(4*GRID_MODE)==0)
-					blendpixel(vid, nx, ny, 100, 100, 100, 80);
+					Renderer_BlendPixel(nx, ny, 100, 100, 100, 80);
 			}
 	}
 	for (i = 0; i<NPART; i++) {
-#ifdef OpenGL
-		if (cmode == CM_FANCY) //If fancy mode
-		{
-
-			if (t==PT_MWAX)
-			{
-				for (x=-1; x<=1; x++)
-				{
-					for (y=-1; y<=1; y++)
-					{
-						if ((abs(x) == 0) && (abs(y) == 0))
-							blendpixel(vid,x+nx,y+ny,224,224,170,255);
-						else if (abs(y) != 0 && abs(x) != 0)
-							blendpixel(vid,x+nx,y+ny,224,224,170,20);
-						else
-							blendpixel(vid,x+nx,y+ny,224,224,170,40);
-					}
-				}
-
-			}
-
-			else if (t==PT_PLUT)
-			{
-				int tempx;
-				int tempy;
-				cr = 0x40;
-				cg = 0x70;
-				cb = 0x20;
-				blendpixel(vid, nx, ny, cr, cg, cb, 192);
-				blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-				blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-				blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-				blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-				for (tempx = 2; tempx < 10; tempx++) {
-					for (tempy = 2; tempy < 10; tempy++) {
-						blendpixel(vid, nx+tempx, ny-tempy, cr, cg, cb, 5);
-						blendpixel(vid, nx-tempx, ny+tempy, cr, cg, cb, 5);
-						blendpixel(vid, nx+tempx, ny+tempy, cr, cg, cb, 5);
-						blendpixel(vid, nx-tempx, ny-tempy, cr, cg, cb, 5);
-					}
-				}
-			}
-		}
-		if (parts[i].type) {
-			//Do nothing
-			t = parts[i].type;
-			nx = (int)(parts[i].x+0.5f);
-			ny = (int)(parts[i].y+0.5f);
-			glBegin (GL_POINTS);
-			glColor3ub (PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors));
-			glVertex2d (nx, ny);
-			glEnd ();
-		}
-#else
 		if (parts[i].type) {
 			t = parts[i].type;
 
@@ -1480,21 +1107,20 @@ void draw_parts(pixel *vid)
 					if (mousex>(nx-3) && mousex<(nx+3) && mousey<(ny+3) && mousey>(ny-3)) //If mous is in the head
 					{
 						sprintf(buff, "%3d", parts[i].life);  //Show HP
-						drawtext(vid, mousex-8-2*(parts[i].life<100)-2*(parts[i].life<10), mousey-12, buff, 255, 255, 255, 255);
+						Graphics_RenderText(mousex-8-2*(parts[i].life<100)-2*(parts[i].life<10), mousey-12, buff, 255, 255, 255, 255);
 					}
 
 					for (r=-2; r<=1; r++) //Here I use r variable not as I should, but I think you will excuse me :-p
 					{
-						s = XRES+BARSIZE;
-						vid[(ny-2)*s+nx+r] = ptypes[(int)player[2]].pcolors;
-						vid[(ny+2)*s+nx+r+1] = ptypes[(int)player[2]].pcolors;
-						vid[(ny+r+1)*s+nx-2] = ptypes[(int)player[2]].pcolors;
-						vid[(ny+r)*s+nx+2] = ptypes[(int)player[2]].pcolors;
+						Renderer_DrawPixel(nx+r, ny-2, ptypes[(int)player[2]].pcolors);
+                        Renderer_DrawPixel(nx+r+1, ny+2, ptypes[(int)player[2]].pcolors);
+                        Renderer_DrawPixel(nx-2, ny+r+1, ptypes[(int)player[2]].pcolors);
+                        Renderer_DrawPixel(nx+2, ny+r, ptypes[(int)player[2]].pcolors);
 					}
-					draw_line(vid , nx, ny+3, player[3], player[4], 255, 255, 255, s);
-					draw_line(vid , player[3], player[4], player[7], player[8], 255, 255, 255, s);
-					draw_line(vid , nx, ny+3, player[11], player[12], 255, 255, 255, s);
-					draw_line(vid , player[11], player[12], player[15], player[16], 255, 255, 255, s);
+					Renderer_DrawLine(nx, ny+3, player[3], player[4], 255, 255, 255, 255);
+                    Renderer_DrawLine(player[3], player[4], player[7], player[8], 255, 255, 255, 255);
+                    Renderer_DrawLine(nx, ny+3, player[11], player[12], 255, 255, 255, 255);
+                    Renderer_DrawLine(player[11], player[12], player[15], player[16], 255, 255, 255, 255);
 
 					isplayer = 1;  //It's a secret. Tssss...
 				}
@@ -1505,21 +1131,20 @@ void draw_parts(pixel *vid)
 					if (mousex>(nx-3) && mousex<(nx+3) && mousey<(ny+3) && mousey>(ny-3)) //If mous is in the head
 					{
 						sprintf(buff, "%3d", parts[i].life);  //Show HP
-						drawtext(vid, mousex-8-2*(parts[i].life<100)-2*(parts[i].life<10), mousey-12, buff, 255, 255, 255, 255);
+						Graphics_RenderText(mousex-8-2*(parts[i].life<100)-2*(parts[i].life<10), mousey-12, buff, 255, 255, 255, 255);
 					}
 
 					for (r=-2; r<=1; r++) //Here I use r variable not as I should, but I think you will excuse me :-p
 					{
-						s = XRES+BARSIZE;
-						vid[(ny-2)*s+nx+r] = ptypes[(int)player2[2]].pcolors;
-						vid[(ny+2)*s+nx+r+1] = ptypes[(int)player2[2]].pcolors;
-						vid[(ny+r+1)*s+nx-2] = ptypes[(int)player2[2]].pcolors;
-						vid[(ny+r)*s+nx+2] = ptypes[(int)player2[2]].pcolors;
+						Renderer_DrawPixel(nx+r, ny-2, ptypes[(int)player2[2]].pcolors);
+                        Renderer_DrawPixel(nx+r+1, ny+2, ptypes[(int)player2[2]].pcolors);
+                        Renderer_DrawPixel(nx-2, ny+r+1, ptypes[(int)player2[2]].pcolors);
+                        Renderer_DrawPixel(nx+2, ny+r, ptypes[(int)player2[2]].pcolors);
 					}
-					draw_line(vid , nx, ny+3, player2[3], player2[4], 100, 100, 255, s);
-					draw_line(vid , player2[3], player2[4], player2[7], player2[8], 100, 100, 255, s);
-					draw_line(vid , nx, ny+3, player2[11], player2[12], 100, 100, 255, s);
-					draw_line(vid , player2[11], player2[12], player2[15], player2[16], 100, 100, 255, s);
+					Renderer_DrawLine(nx, ny+3, player2[3], player2[4], 255, 255, 255, 255);
+                    Renderer_DrawLine(player2[3], player2[4], player2[7], player2[8], 255, 255, 255, 255);
+                    Renderer_DrawLine(nx, ny+3, player2[11], player2[12], 255, 255, 255, 255);
+                    Renderer_DrawLine(player2[11], player2[12], player2[15], player2[16], 255, 255, 255, 255);
 
 					isplayer2 = 1;  //It's a secret. Tssss...
 				}
@@ -1543,14 +1168,14 @@ void draw_parts(pixel *vid)
 						cr = cr>255?255:cr;
 						cg = cg>255?255:cg;
 						cb = cb>255?255:cb;
-						blendpixel(vid, nx, ny, cr, cg, cb, 255);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 					}
 					else
 					{
 						cr = PIXR(ptypes[t].pcolors);
 						cg = PIXG(ptypes[t].pcolors);
 						cb = PIXB(ptypes[t].pcolors);
-						blendpixel(vid, nx, ny, cr, cg, cb, 255);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 					}
 				}
 				else if (cmode==CM_GRAD)
@@ -1572,7 +1197,7 @@ void draw_parts(pixel *vid)
 						cg = 0;
 					if (cb<=0)
 						cb = 0;
-					blendpixel(vid, nx, ny, cr, cg, cb, 255);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 				}
 				else if (cmode==CM_FANCY && //all fancy mode effects go here, this is a list of exceptions to skip
 				         t!=PT_FIRE && t!=PT_PLSM &&	t!=PT_WTRV &&
@@ -1596,15 +1221,15 @@ void draw_parts(pixel *vid)
 								cg = 255;
 							if (cb>=255)
 								cb = 255;
-							blendpixel(vid, nx, ny, cr, cg, cb, 255);
+							Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 							for (x=-1; x<=1; x++)
 							{
 								for (y=-1; y<=1; y++)
 								{
 									if ((abs(x) == 0) && (abs(y) == 0))
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,100);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,100);
 									else if (abs(y) != 0 || abs(x) != 0)
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,50);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,50);
 								}
 							}
 						}
@@ -1621,9 +1246,9 @@ void draw_parts(pixel *vid)
 								for (y=-1; y<=1; y++)
 								{
 									if ((abs(x) == 0) && (abs(y) == 0))
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,100);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,100);
 									else if (abs(y) != 0 || abs(x) != 0)
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,50);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,50);
 								}
 							}
 						}
@@ -1632,12 +1257,12 @@ void draw_parts(pixel *vid)
 							fr = restrict_flt(parts[i].temp-(275.13f+32.0f), 0, 128)/50.0f;
 							fg = restrict_flt(parts[i].ctype, 0, 128)/50.0f;
 							fb = restrict_flt(parts[i].tmp, 0, 128)/50.0f;
-					
+
 							cr = restrict_flt(64.0f+parts[i].temp-(275.13f+32.0f), 0, 255);
 							cg = restrict_flt(64.0f+parts[i].ctype, 0, 255);
 							cb = restrict_flt(64.0f+parts[i].tmp, 0, 255);
-
-							vid[ny*(XRES+BARSIZE)+nx] = PIXRGB(cr, cg, cb);
+							
+							Renderer_DrawPixel(nx,ny,PIXRGB(cr, cg, cb));
 							x = nx/CELL;
 							y = ny/CELL;
 							fg += fire_g[y][x];
@@ -1655,9 +1280,9 @@ void draw_parts(pixel *vid)
 								for (y=-1; y<=1; y++)
 								{
 									if ((abs(x) == 0) && (abs(y) == 0))
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,100);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,100);
 									else if (abs(y) != 0 || abs(x) != 0)
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,50);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,50);
 								}
 							}
 						}
@@ -1671,9 +1296,9 @@ void draw_parts(pixel *vid)
 								for (y=-1; y<=1; y++)
 								{
 									if ((abs(x) == 0) && (abs(y) == 0))
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,100);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,100);
 									else if (abs(y) != 0 || abs(x) != 0)
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,50);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,50);
 								}
 							}
 						}
@@ -1690,11 +1315,11 @@ void draw_parts(pixel *vid)
 								for (y=-1; y<=1; y++)
 								{
 									if ((abs(x) == 0) && (abs(y) == 0))
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,180);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,180);
 									else if (abs(y) != 0 && abs(x) != 0)
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,50);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,50);
 									else
-										blendpixel(vid,x+nx,y+ny,cr,cg,cb,80);
+										Renderer_BlendPixel(x+nx,y+ny,cr,cg,cb,80);
 								}
 							}
 						}
@@ -1706,32 +1331,32 @@ void draw_parts(pixel *vid)
 						cr = PIXR(ptypes[t].pcolors);
 						cg = PIXG(ptypes[t].pcolors);
 						cb = PIXB(ptypes[t].pcolors);
-						//blendpixel(vid, nx, ny, cr, cg, cb, 192);
-						//blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-						//blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-						//blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-						//blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-						addpixel(vid, nx, ny, cr, cg, cb, 192);
-						addpixel(vid, nx+1, ny, cr, cg, cb, 96);
-						addpixel(vid, nx-1, ny, cr, cg, cb, 96);
-						addpixel(vid, nx, ny+1, cr, cg, cb, 96);
-						addpixel(vid, nx, ny-1, cr, cg, cb, 96);
+						//Renderer_BlendPixel(nx, ny, cr, cg, cb, 192);
+						//Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 96);
+						//Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
+						//Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
+						//Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+						Renderer_AddPixel(nx, ny, cr, cg, cb, 192);
+						Renderer_AddPixel(nx+1, ny, cr, cg, cb, 96);
+						Renderer_AddPixel(nx-1, ny, cr, cg, cb, 96);
+						Renderer_AddPixel(nx, ny+1, cr, cg, cb, 96);
+						Renderer_AddPixel(nx, ny-1, cr, cg, cb, 96);
 						for (tempx = 2; tempx < 7; tempx++) {
 							for (tempy = 2; tempy < 7; tempy++) {
-								addpixel(vid, nx+tempx, ny-tempy, cr, cg, cb, 5);
-								addpixel(vid, nx-tempx, ny+tempy, cr, cg, cb, 5);
-								addpixel(vid, nx+tempx, ny+tempy, cr, cg, cb, 5);
-								addpixel(vid, nx-tempx, ny-tempy, cr, cg, cb, 5);
-								//blendpixel(vid, nx+tempx, ny-tempy, cr, cg, cb, 5);
-								//blendpixel(vid, nx-tempx, ny+tempy, cr, cg, cb, 5);
-								//blendpixel(vid, nx+tempx, ny+tempy, cr, cg, cb, 5);
-								//blendpixel(vid, nx-tempx, ny-tempy, cr, cg, cb, 5);
+								Renderer_AddPixel(nx+tempx, ny-tempy, cr, cg, cb, 5);
+								Renderer_AddPixel(nx-tempx, ny+tempy, cr, cg, cb, 5);
+								Renderer_AddPixel(nx+tempx, ny+tempy, cr, cg, cb, 5);
+								Renderer_AddPixel(nx-tempx, ny-tempy, cr, cg, cb, 5);
+								//Renderer_BlendPixel(nx+tempx, ny-tempy, cr, cg, cb, 5);
+								//Renderer_BlendPixel(nx-tempx, ny+tempy, cr, cg, cb, 5);
+								//Renderer_BlendPixel(nx+tempx, ny+tempy, cr, cg, cb, 5);
+								//Renderer_BlendPixel(nx-tempx, ny-tempy, cr, cg, cb, 5);
 							}
 						}
 					}
 					else //if no fancy effects, draw a simple pixel
 					{
-						vid[ny*(XRES+BARSIZE)+nx] = ptypes[t].pcolors;
+						Renderer_DrawPixel(nx, ny, ptypes[t].pcolors);
 					}
 				}
 				else if (cmode==CM_LIFE)
@@ -1757,7 +1382,7 @@ void draw_parts(pixel *vid)
 						cg = 0;
 					if (cb<=0)
 						cb = 0;
-					blendpixel(vid, nx, ny, cr, cg, cb, 255);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 				}
 				else if (t==PT_QRTZ || t==PT_PQRT)
 				{
@@ -1781,7 +1406,7 @@ void draw_parts(pixel *vid)
 							cg = 0;
 						if (cb<=0)
 							cb = 0;
-						blendpixel(vid, nx, ny, cr, cg, cb, 255);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 					}
 					else
 					{
@@ -1791,7 +1416,7 @@ void draw_parts(pixel *vid)
 						cr = cr>255?255:cr;
 						cg = cg>255?255:cg;
 						cb = cb>255?255:cb;
-						blendpixel(vid, nx, ny, cr, cg, cb, 255);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 					}
 				}
 				else if (t==PT_SPNG)
@@ -1805,51 +1430,51 @@ void draw_parts(pixel *vid)
 						cg = 50;
 					if (cb<=20)
 						cb = 20;
-					blendpixel(vid, nx, ny, cr, cg, cb, 255);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 
 				}
-				else if(t==PT_LOTE)//colors for life states
+				else if (t==PT_LOTE)//colors for life states
 				{
-					if(parts[i].tmp==2)
-						blendpixel(vid, nx, ny, 255, 128, 0, 255);
-					else if(parts[i].tmp==1)
-						blendpixel(vid, nx, ny, 255, 255, 0, 255);
+					if (parts[i].tmp==2)
+						Renderer_BlendPixel(nx, ny, 255, 128, 0, 255);
+					else if (parts[i].tmp==1)
+						Renderer_BlendPixel(nx, ny, 255, 255, 0, 255);
 					else
-						blendpixel(vid, nx, ny, 255, 0, 0, 255);
+						Renderer_BlendPixel(nx, ny, 255, 0, 0, 255);
 				}
-				else if(t==PT_FRG2)//colors for life states
+				else if (t==PT_FRG2)//colors for life states
 				{
-					if(parts[i].tmp==2)
-						blendpixel(vid, nx, ny, 0, 100, 50, 255);
+					if (parts[i].tmp==2)
+						Renderer_BlendPixel(nx, ny, 0, 100, 50, 255);
 					else
-						blendpixel(vid, nx, ny, 0, 255, 90, 255);
+						Renderer_BlendPixel(nx, ny, 0, 255, 90, 255);
 				}
-				else if(t==PT_STAR)//colors for life states
+				else if (t==PT_STAR)//colors for life states
 				{
-					if(parts[i].tmp==4)
-						blendpixel(vid, nx, ny, 0, 0, 128, 255);
-					else if(parts[i].tmp==3)
-						blendpixel(vid, nx, ny, 0, 0, 150, 255);
-					else if(parts[i].tmp==2)
-						blendpixel(vid, nx, ny, 0, 0, 190, 255);
-					else if(parts[i].tmp==1)
-						blendpixel(vid, nx, ny, 0, 0, 230, 255);
+					if (parts[i].tmp==4)
+						Renderer_BlendPixel(nx, ny, 0, 0, 128, 255);
+					else if (parts[i].tmp==3)
+						Renderer_BlendPixel(nx, ny, 0, 0, 150, 255);
+					else if (parts[i].tmp==2)
+						Renderer_BlendPixel(nx, ny, 0, 0, 190, 255);
+					else if (parts[i].tmp==1)
+						Renderer_BlendPixel(nx, ny, 0, 0, 230, 255);
 					else
-						blendpixel(vid, nx, ny, 0, 0, 70, 255);
+						Renderer_BlendPixel(nx, ny, 0, 0, 70, 255);
 				}
-				else if(t==PT_FROG)//colors for life states
+				else if (t==PT_FROG)//colors for life states
 				{
-					if(parts[i].tmp==2)
-						blendpixel(vid, nx, ny, 0, 100, 0, 255);
+					if (parts[i].tmp==2)
+						Renderer_BlendPixel(nx, ny, 0, 100, 0, 255);
 					else
-						blendpixel(vid, nx, ny, 0, 255, 0, 255);
+						Renderer_BlendPixel(nx, ny, 0, 255, 0, 255);
 				}
-				else if(t==PT_BRAN)//colors for life states
+				else if (t==PT_BRAN)//colors for life states
 				{
-					if(parts[i].tmp==1)
-						blendpixel(vid, nx, ny, 150, 150, 0, 255);
+					if (parts[i].tmp==1)
+						Renderer_BlendPixel(nx, ny, 150, 150, 0, 255);
 					else
-						blendpixel(vid, nx, ny, 255, 255, 0, 255);
+						Renderer_BlendPixel(nx, ny, 255, 255, 0, 255);
 				}
 				else if (t==PT_DEUT)
 				{
@@ -1882,7 +1507,7 @@ void draw_parts(pixel *vid)
 							cg = 255;
 						if (cb>=255)
 							cb = 255;
-						blendpixel(vid, nx, ny, cr, cg, cb, 255);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 
 					}
 
@@ -1893,7 +1518,7 @@ void draw_parts(pixel *vid)
 					y = ny;
 					if (cmode == CM_FIRE||cmode==CM_BLOB || cmode==CM_FANCY)
 					{
-						vid[ny*(XRES+BARSIZE)+nx] = PIXRGB(parts[i].tmp,parts[i].ctype,parts[i].flags);//yes i know this pixel is different color than the glow... i don't know why
+						Renderer_DrawPixel(nx,ny,PIXRGB(parts[i].tmp,parts[i].ctype,parts[i].flags));
 						cg = parts[i].tmp/4;
 						cb = parts[i].ctype/4;
 						cr = parts[i].flags/4;
@@ -1910,7 +1535,7 @@ void draw_parts(pixel *vid)
 						fire_r[y][x] = cr;
 					}
 					else
-						blendpixel(vid,x,y,parts[i].tmp,parts[i].ctype,parts[i].flags,255);
+						Renderer_BlendPixel(x,y,parts[i].tmp,parts[i].ctype,parts[i].flags,255);
 				}
 				else if (t==PT_GRAV)
 				{
@@ -1955,7 +1580,7 @@ void draw_parts(pixel *vid)
 						cb=255;
 					if (cb<0)
 						cb=0;
-					blendpixel(vid, nx, ny, cr, cg, cb, 255);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 				}
 				else if (t==PT_WIFI)
 				{
@@ -1964,7 +1589,7 @@ void draw_parts(pixel *vid)
 					cr = sin(frequency*q + 0) * 127 + 128;
 					cg = sin(frequency*q + 2) * 127 + 128;
 					cb = sin(frequency*q + 4) * 127 + 128;
-					blendpixel(vid, nx, ny, cr, cg, cb, 255);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 					if (mousex==(nx) && mousey==(ny) && DEBUG_MODE)//draw lines connecting wifi channels
 					{
 						int z;
@@ -1972,7 +1597,7 @@ void draw_parts(pixel *vid)
 							if (parts[z].type)
 							{
 								if (parts[z].type==PT_WIFI&&parts[z].tmp==parts[i].tmp)
-									xor_line(nx,ny,(int)(parts[z].x+0.5f),(int)(parts[z].y+0.5f),vid);
+									Renderer_XORLine(nx,ny,(int)(parts[z].x+0.5f),(int)(parts[z].y+0.5f));
 							}
 						}
 					}
@@ -1985,24 +1610,24 @@ void draw_parts(pixel *vid)
 					float drad = 0.0f;
 					float ddist = 0.0f;
 					orbitalparts_get(parts[i].life, parts[i].ctype, orbd, orbl);
-					for(r = 0; r < 4; r++){
+					for (r = 0; r < 4; r++) {
 						ddist = ((float)orbd[r])/16.0f;
 						drad = (M_PI * ((float)orbl[r]) / 180.0f)*1.41f;
 						nxo = ddist*cos(drad);
 						nyo = ddist*sin(drad);
-						if(ny+nyo>0 && ny+nyo<YRES && nx+nxo>0 && nx+nxo<XRES){
-							addpixel(vid, nx+nxo, ny+nyo, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 255-orbd[r]);
-							if(cmode == CM_FIRE && r == 1){
+						if (ny+nyo>0 && ny+nyo<YRES && nx+nxo>0 && nx+nxo<XRES) {
+							Renderer_AddPixel(nx+nxo, ny+nyo, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 255-orbd[r]);
+							if (cmode == CM_FIRE && r == 1) {
 								fire_rv = fire_r[(ny+nyo)/CELL][(nx+nxo)/CELL];
 								fire_rv += 1;
-								if(fire_rv>255) fire_rv = 255;
+								if (fire_rv>255) fire_rv = 255;
 								fire_r[(ny+nyo)/CELL][(nx+nxo)/CELL] = fire_rv;
 							}
 						}
-						addpixel(vid, nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 200);
+						Renderer_AddPixel(nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 200);
 					}
-					if(DEBUG_MODE){//draw lines connecting portals
-						blendpixel(vid,nx,ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors),255);
+					if (DEBUG_MODE) {//draw lines connecting portals
+						Renderer_BlendPixel(nx,ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors),255);
 						if (mousex==(nx) && mousey==(ny))
 						{
 							int z;
@@ -2010,7 +1635,7 @@ void draw_parts(pixel *vid)
 								if (parts[z].type)
 								{
 									if (parts[z].type==PT_PRTO&&parts[z].tmp==parts[i].tmp)
-										xor_line(nx,ny,(int)(parts[z].x+0.5f),(int)(parts[z].y+0.5f),vid);
+										Renderer_XORLine(nx,ny,(int)(parts[z].x+0.5f),(int)(parts[z].y+0.5f));
 								}
 							}
 						}
@@ -2024,24 +1649,24 @@ void draw_parts(pixel *vid)
 					float drad = 0.0f;
 					float ddist = 0.0f;
 					orbitalparts_get(parts[i].life, parts[i].ctype, orbd, orbl);
-					for(r = 0; r < 4; r++){
+					for (r = 0; r < 4; r++) {
 						ddist = ((float)orbd[r])/16.0f;
 						drad = (M_PI * ((float)orbl[r]) / 180.0f)*1.41f;
 						nxo = ddist*cos(drad);
 						nyo = ddist*sin(drad);
-						if(ny+nyo>0 && ny+nyo<YRES && nx+nxo>0 && nx+nxo<XRES){
-							addpixel(vid, nx+nxo, ny+nyo, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 255-orbd[r]);
-							if(cmode == CM_FIRE && r == 1){
+						if (ny+nyo>0 && ny+nyo<YRES && nx+nxo>0 && nx+nxo<XRES) {
+							Renderer_AddPixel(nx+nxo, ny+nyo, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 255-orbd[r]);
+							if (cmode == CM_FIRE && r == 1) {
 								fire_bv = fire_b[(ny+nyo)/CELL][(nx+nxo)/CELL];
 								fire_bv += 1;
-								if(fire_bv>255) fire_bv = 255;
+								if (fire_bv>255) fire_bv = 255;
 								fire_b[(ny+nyo)/CELL][(nx+nxo)/CELL] = fire_bv;
 							}
 						}
-						addpixel(vid, nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 200);
+						Renderer_AddPixel(nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 200);
 					}
-					if(DEBUG_MODE){//draw lines connecting portals
-						blendpixel(vid,nx,ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors),255);
+					if (DEBUG_MODE) {//draw lines connecting portals
+						Renderer_BlendPixel(nx,ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors),255);
 						if (mousex==(nx) && mousey==(ny))
 						{
 							int z;
@@ -2049,13 +1674,13 @@ void draw_parts(pixel *vid)
 								if (parts[z].type)
 								{
 									if (parts[z].type==PT_PRTI&&parts[z].tmp==parts[i].tmp)
-										xor_line(nx,ny,(int)(parts[z].x+0.5f),(int)(parts[z].y+0.5f),vid);
+										Renderer_XORLine(nx,ny,(int)(parts[z].x+0.5f),(int)(parts[z].y+0.5f));
 								}
 							}
 						}
 					}
 				}
-				else if ((t==PT_BIZR||t==PT_BIZRG)&&parts[i].ctype)
+				else if ((t==PT_BIZR||t==PT_BIZRG||t==PT_BIZRS)&&parts[i].ctype)
 				{
 					cg = 0;
 					cb = 0;
@@ -2080,7 +1705,7 @@ void draw_parts(pixel *vid)
 						fg = cg/40 * fabs(parts[i].vx)+fabs(parts[i].vy);
 						fb = cb/40 * fabs(parts[i].vx)+fabs(parts[i].vy);
 						fr = cr/40 * fabs(parts[i].vx)+fabs(parts[i].vy);
-						vid[ny*(XRES+BARSIZE)+nx] = PIXRGB((int)restrict_flt(cr, 0, 255), (int)restrict_flt(cg, 0, 255), (int)restrict_flt(cb, 0, 255));
+						Renderer_DrawPixel(nx,ny,PIXRGB((int)restrict_flt(cr, 0, 255), (int)restrict_flt(cg, 0, 255), (int)restrict_flt(cb, 0, 255)));
 						x = nx/CELL;
 						y = ny/CELL;
 						fg += fire_g[y][x];
@@ -2094,7 +1719,7 @@ void draw_parts(pixel *vid)
 						fire_r[y][x] = fr;
 					}
 					else
-						blendpixel(vid, nx, ny, cr, cg, cb, 255);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 				}
 				else if (t==PT_PIPE)
 				{
@@ -2149,14 +1774,14 @@ void draw_parts(pixel *vid)
 						cg = PIXG(ptypes[parts[i].tmp].pcolors);
 						cb = PIXB(ptypes[parts[i].tmp].pcolors);
 					}
-					blendpixel(vid, nx, ny, cr, cg, cb, 255);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 
 
 
 				}
 				else if (t==PT_INVIS && (pv[ny/CELL][nx/CELL]>4.0f ||pv[ny/CELL][nx/CELL]<-4.0f))
 				{
-					blendpixel(vid, nx, ny, 15, 0, 150, 100);
+					Renderer_BlendPixel(nx, ny, 15, 0, 150, 100);
 				}
 				else if (t==PT_ACID)
 				{
@@ -2175,26 +1800,26 @@ void draw_parts(pixel *vid)
 					if (cb>=255)
 						cb = 255;
 
-					blendpixel(vid, nx, ny, cr, cg, cb, 255);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 
 					if (cmode==CM_BLOB)
 					{
-						blendpixel(vid, nx+1, ny, cr, cg, cb, 223);
-						blendpixel(vid, nx-1, ny, cr, cg, cb, 223);
-						blendpixel(vid, nx, ny+1, cr, cg, cb, 223);
-						blendpixel(vid, nx, ny-1, cr, cg, cb, 223);
+						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 223);
+						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 223);
+						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 223);
+						Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 223);
 
-						blendpixel(vid, nx+1, ny-1, cr, cg, cb, 112);
-						blendpixel(vid, nx-1, ny-1, cr, cg, cb, 112);
-						blendpixel(vid, nx+1, ny+1, cr, cg, cb, 112);
-						blendpixel(vid, nx-1, ny+1, cr, cg, cb, 112);
+						Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 112);
+						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 112);
+						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 112);
+						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 112);
 					}
 				}
 				else if (t==PT_NEUT)
 				{
 					if (cmode == CM_FIRE||cmode==CM_BLOB || cmode==CM_FANCY)
 					{
-						vid[ny*(XRES+BARSIZE)+nx] = ptypes[t].pcolors;
+						Renderer_DrawPixel(nx,ny,ptypes[t].pcolors);
 						cg = 8;
 						cb = 12;
 						x = nx/CELL;
@@ -2211,15 +1836,15 @@ void draw_parts(pixel *vid)
 						cr = 0x20;
 						cg = 0xE0;
 						cb = 0xFF;
-						blendpixel(vid, nx, ny, cr, cg, cb, 192);
-						blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-						blendpixel(vid, nx+1, ny-1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx+1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 192);
+						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}
 				}
 				else if (t==PT_FILT)
@@ -2244,7 +1869,7 @@ void draw_parts(pixel *vid)
 					cr = cr>255?255:cr;
 					cg = cg>255?255:cg;
 					cb = cb>255?255:cb;
-					blendpixel(vid, nx, ny, cr, cg, cb, 127);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 127);
 				}
 				else if (t==PT_BRAY && parts[i].tmp==0)
 				{
@@ -2267,9 +1892,9 @@ void draw_parts(pixel *vid)
 						cr = cr>255?255:cr;
 						cg = cg>255?255:cg;
 						cb = cb>255?255:cb;
-						blendpixel(vid, nx, ny, cr, cg, cb, trans);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, trans);
 					} else
-						blendpixel(vid, nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), trans);
+						Renderer_BlendPixel(nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), trans);
 				}
 				else if (t==PT_BRAY && parts[i].tmp==1)
 				{
@@ -2292,15 +1917,15 @@ void draw_parts(pixel *vid)
 						cr = cr>255?255:cr;
 						cg = cg>255?255:cg;
 						cb = cb>255?255:cb;
-						blendpixel(vid, nx, ny, cr, cg, cb, trans);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, trans);
 					} else
-						blendpixel(vid, nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), trans);
+						Renderer_BlendPixel(nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), trans);
 				}
 				else if (t==PT_BRAY && parts[i].tmp==2)
 				{
 					int trans = parts[i].life*100;
 					if (trans>255) trans = 255;
-					blendpixel(vid, nx, ny, 255, 150, 50, trans);
+					Renderer_BlendPixel(nx, ny, 255, 150, 50, trans);
 				}
 				else if (t==PT_PHOT)
 				{
@@ -2319,7 +1944,7 @@ void draw_parts(pixel *vid)
 						cr *= x;
 						cg *= x;
 						cb *= x;
-						vid[ny*(XRES+BARSIZE)+nx] = PIXRGB(cr>255?255:cr,cg>255?255:cg,cb>255?255:cb);
+						Renderer_DrawPixel(nx,ny,PIXRGB(cr>255?255:cr,cg>255?255:cg,cb>255?255:cb));
 						cr >>= 4;
 						cg >>= 4;
 						cb >>= 4;
@@ -2353,15 +1978,15 @@ void draw_parts(pixel *vid)
 						cr = cr>255?255:cr;
 						cg = cg>255?255:cg;
 						cb = cb>255?255:cb;
-						blendpixel(vid, nx, ny, cr, cg, cb, 192);
-						blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-						blendpixel(vid, nx+1, ny-1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx+1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 192);
+						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}
 				}
 				//Life can be 11 too, so don't just check for 10
@@ -2369,7 +1994,7 @@ void draw_parts(pixel *vid)
 				{
 					x = nx;
 					y = ny;
-					blendpixel(vid,x,y,17,217,24,255);
+					Renderer_BlendPixel(x,y,17,217,24,255);
 				}
 				else if (t==PT_SMKE)
 				{
@@ -2397,11 +2022,11 @@ void draw_parts(pixel *vid)
 							for (y=-3; y<4; y++)
 							{
 								if (abs(x)+abs(y) <2 && !(abs(x)==2||abs(y)==2))
-									blendpixel(vid,x+nx,y+ny,100,100,100,30);
+									Renderer_BlendPixel(x+nx,y+ny,100,100,100,30);
 								if (abs(x)+abs(y) <=3 && abs(x)+abs(y))
-									blendpixel(vid,x+nx,y+ny,100,100,100,10);
+									Renderer_BlendPixel(x+nx,y+ny,100,100,100,10);
 								if (abs(x)+abs(y) == 2)
-									blendpixel(vid,x+nx,y+ny,100,100,100,20);
+									Renderer_BlendPixel(x+nx,y+ny,100,100,100,20);
 							}
 						}
 					}
@@ -2432,11 +2057,11 @@ void draw_parts(pixel *vid)
 							for (y=-3; y<4; y++)
 							{
 								if (abs(x)+abs(y) <2 && !(abs(x)==2||abs(y)==2))
-									blendpixel(vid,x+nx,y+ny, PIXR(ptypes[t].pcolors)/1.6, PIXG(ptypes[t].pcolors)/1.6, PIXB(ptypes[t].pcolors)/1.6, 30);
+									Renderer_BlendPixel(x+nx,y+ny, PIXR(ptypes[t].pcolors)/1.6, PIXG(ptypes[t].pcolors)/1.6, PIXB(ptypes[t].pcolors)/1.6, 30);
 								if (abs(x)+abs(y) <=3 && abs(x)+abs(y))
-									blendpixel(vid,x+nx,y+ny, PIXR(ptypes[t].pcolors)/1.6, PIXG(ptypes[t].pcolors)/1.6, PIXB(ptypes[t].pcolors)/1.6, 10);
+									Renderer_BlendPixel(x+nx,y+ny, PIXR(ptypes[t].pcolors)/1.6, PIXG(ptypes[t].pcolors)/1.6, PIXB(ptypes[t].pcolors)/1.6, 10);
 								if (abs(x)+abs(y) == 2)
-									blendpixel(vid,x+nx,y+ny, PIXR(ptypes[t].pcolors)/1.6, PIXG(ptypes[t].pcolors)/1.6, PIXB(ptypes[t].pcolors)/1.6, 20);
+									Renderer_BlendPixel(x+nx,y+ny, PIXR(ptypes[t].pcolors)/1.6, PIXG(ptypes[t].pcolors)/1.6, PIXB(ptypes[t].pcolors)/1.6, 20);
 							}
 						}
 					}
@@ -2445,7 +2070,7 @@ void draw_parts(pixel *vid)
 				{
 					if (cmode == CM_FIRE||cmode==CM_BLOB || cmode==CM_FANCY)
 					{
-						vid[ny*(XRES+BARSIZE)+nx] = ptypes[t].pcolors;
+						Renderer_DrawPixel(nx,ny,ptypes[t].pcolors);
 						cg = 16;
 						cb = 20;
 						cr = 12;
@@ -2466,15 +2091,15 @@ void draw_parts(pixel *vid)
 						cr = 0xFF;
 						cg = 0xFF;
 						cb = 0xA0;
-						blendpixel(vid, nx, ny, cr, cg, cb, 192);
-						blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-						blendpixel(vid, nx+1, ny-1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx+1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 192);
+						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}
 				}
 				else if (t==PT_GLOW)
@@ -2482,12 +2107,12 @@ void draw_parts(pixel *vid)
 					fr = restrict_flt(parts[i].temp-(275.13f+32.0f), 0, 128)/50.0f;
 					fg = restrict_flt(parts[i].ctype, 0, 128)/50.0f;
 					fb = restrict_flt(parts[i].tmp, 0, 128)/50.0f;
-					
+
 					cr = restrict_flt(64.0f+parts[i].temp-(275.13f+32.0f), 0, 255);
 					cg = restrict_flt(64.0f+parts[i].ctype, 0, 255);
 					cb = restrict_flt(64.0f+parts[i].tmp, 0, 255);
-					
-					vid[ny*(XRES+BARSIZE)+nx] = PIXRGB(cr, cg, cb);
+
+					Renderer_DrawPixel(nx,ny,PIXRGB(cr, cg, cb));
 					if (cmode == CM_FIRE||cmode==CM_BLOB || cmode==CM_FANCY)
 					{
 						x = nx/CELL;
@@ -2503,79 +2128,79 @@ void draw_parts(pixel *vid)
 						fire_r[y][x] = fr;
 					}
 					if (cmode == CM_BLOB) {
-						blendpixel(vid, nx+1, ny, cr, cg, cb, 223);
-						blendpixel(vid, nx-1, ny, cr, cg, cb, 223);
-						blendpixel(vid, nx, ny+1, cr, cg, cb, 223);
-						blendpixel(vid, nx, ny-1, cr, cg, cb, 223);
+						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 223);
+						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 223);
+						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 223);
+						Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 223);
 
-						blendpixel(vid, nx+1, ny-1, cr, cg, cb, 112);
-						blendpixel(vid, nx-1, ny-1, cr, cg, cb, 112);
-						blendpixel(vid, nx+1, ny+1, cr, cg, cb, 112);
-						blendpixel(vid, nx-1, ny+1, cr, cg, cb, 112);
+						Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 112);
+						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 112);
+						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 112);
+						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 112);
 					}
 				}
 				else if (t==PT_LCRY)
 				{
 					uint8 GR = 0x50+(parts[i].life*10);
-					vid[ny*(XRES+BARSIZE)+nx] = PIXRGB(GR, GR, GR);
+					Renderer_DrawPixel(nx,ny,PIXRGB(GR, GR, GR));
 					if (cmode == CM_BLOB) {
-						blendpixel(vid, nx+1, ny, GR, GR, GR, 223);
-						blendpixel(vid, nx-1, ny, GR, GR, GR, 223);
-						blendpixel(vid, nx, ny+1, GR, GR, GR, 223);
-						blendpixel(vid, nx, ny-1, GR, GR, GR, 223);
+						Renderer_BlendPixel(nx+1, ny, GR, GR, GR, 223);
+						Renderer_BlendPixel(nx-1, ny, GR, GR, GR, 223);
+						Renderer_BlendPixel(nx, ny+1, GR, GR, GR, 223);
+						Renderer_BlendPixel(nx, ny-1, GR, GR, GR, 223);
 
-						blendpixel(vid, nx+1, ny-1, GR, GR, GR, 112);
-						blendpixel(vid, nx-1, ny-1, GR, GR, GR, 112);
-						blendpixel(vid, nx+1, ny+1, GR, GR, GR, 112);
-						blendpixel(vid, nx-1, ny+1, GR, GR, GR, 112);
+						Renderer_BlendPixel(nx+1, ny-1, GR, GR, GR, 112);
+						Renderer_BlendPixel(nx-1, ny-1, GR, GR, GR, 112);
+						Renderer_BlendPixel(nx+1, ny+1, GR, GR, GR, 112);
+						Renderer_BlendPixel(nx-1, ny+1, GR, GR, GR, 112);
 					}
 				}
 				else if (t==PT_PCLN)
 				{
 					uint8 GR = 0x3B+(parts[i].life*19);
-					vid[ny*(XRES+BARSIZE)+nx] = PIXRGB(GR, GR, 10);
+					Renderer_DrawPixel(nx,ny,PIXRGB(GR, GR, 10));
 					if (cmode == CM_BLOB) {
-						blendpixel(vid, nx+1, ny, GR, GR, 10, 223);
-						blendpixel(vid, nx-1, ny, GR, GR, 10, 223);
-						blendpixel(vid, nx, ny+1, GR, GR, 10, 223);
-						blendpixel(vid, nx, ny-1, GR, GR, 10, 223);
+						Renderer_BlendPixel(nx+1, ny, GR, GR, 10, 223);
+						Renderer_BlendPixel(nx-1, ny, GR, GR, 10, 223);
+						Renderer_BlendPixel(nx, ny+1, GR, GR, 10, 223);
+						Renderer_BlendPixel(nx, ny-1, GR, GR, 10, 223);
 
-						blendpixel(vid, nx+1, ny-1, GR, GR, 10, 112);
-						blendpixel(vid, nx-1, ny-1, GR, GR, 10, 112);
-						blendpixel(vid, nx+1, ny+1, GR, GR, 10, 112);
-						blendpixel(vid, nx-1, ny+1, GR, GR, 10, 112);
+						Renderer_BlendPixel(nx+1, ny-1, GR, GR, 10, 112);
+						Renderer_BlendPixel(nx-1, ny-1, GR, GR, 10, 112);
+						Renderer_BlendPixel(nx+1, ny+1, GR, GR, 10, 112);
+						Renderer_BlendPixel(nx-1, ny+1, GR, GR, 10, 112);
 					}
 				}
 				else if (t==PT_HSWC)
 				{
 					uint8 GR = 0x3B+(parts[i].life*19);
-					vid[ny*(XRES+BARSIZE)+nx] = PIXRGB(GR, 10, 10);
+					Renderer_DrawPixel(nx,ny,PIXRGB(GR, 10, 10));
 					if (cmode == CM_BLOB) {
-						blendpixel(vid, nx+1, ny, GR, 10, 10, 223);
-						blendpixel(vid, nx-1, ny, GR, 10, 10, 223);
-						blendpixel(vid, nx, ny+1, GR, 10, 10, 223);
-						blendpixel(vid, nx, ny-1, GR, 10, 10, 223);
+						Renderer_BlendPixel(nx+1, ny, GR, 10, 10, 223);
+						Renderer_BlendPixel(nx-1, ny, GR, 10, 10, 223);
+						Renderer_BlendPixel(nx, ny+1, GR, 10, 10, 223);
+						Renderer_BlendPixel(nx, ny-1, GR, 10, 10, 223);
 
-						blendpixel(vid, nx+1, ny-1, GR, 10, 10, 112);
-						blendpixel(vid, nx-1, ny-1, GR, 10, 10, 112);
-						blendpixel(vid, nx+1, ny+1, GR, 10, 10, 112);
-						blendpixel(vid, nx-1, ny+1, GR, 10, 10, 112);
+						Renderer_BlendPixel(nx+1, ny-1, GR, 10, 10, 112);
+						Renderer_BlendPixel(nx-1, ny-1, GR, 10, 10, 112);
+						Renderer_BlendPixel(nx+1, ny+1, GR, 10, 10, 112);
+						Renderer_BlendPixel(nx-1, ny+1, GR, 10, 10, 112);
 					}
 				}
 				else if (t==PT_PUMP)
 				{
 					uint8 GR = 0x3B+(parts[i].life*19);
-					vid[ny*(XRES+BARSIZE)+nx] = PIXRGB(10, 10, GR);
+					Renderer_DrawPixel(nx,ny,PIXRGB(10, 10, GR));
 					if (cmode == CM_BLOB) {
-						blendpixel(vid, nx+1, ny, 10, 10, GR, 223);
-						blendpixel(vid, nx-1, ny, 10, 10, GR, 223);
-						blendpixel(vid, nx, ny+1, 10, 10, GR, 223);
-						blendpixel(vid, nx, ny-1, 10, 10, GR, 223);
+						Renderer_BlendPixel(nx+1, ny, 10, 10, GR, 223);
+						Renderer_BlendPixel(nx-1, ny, 10, 10, GR, 223);
+						Renderer_BlendPixel(nx, ny+1, 10, 10, GR, 223);
+						Renderer_BlendPixel(nx, ny-1, 10, 10, GR, 223);
 
-						blendpixel(vid, nx+1, ny-1, 10, 10, GR, 112);
-						blendpixel(vid, nx-1, ny-1, 10, 10, GR, 112);
-						blendpixel(vid, nx+1, ny+1, 10, 10, GR, 112);
-						blendpixel(vid, nx-1, ny+1, 10, 10, GR, 112);
+						Renderer_BlendPixel(nx+1, ny-1, 10, 10, GR, 112);
+						Renderer_BlendPixel(nx-1, ny-1, 10, 10, GR, 112);
+						Renderer_BlendPixel(nx+1, ny+1, 10, 10, GR, 112);
+						Renderer_BlendPixel(nx-1, ny+1, 10, 10, GR, 112);
 					}
 				}
 				else if (t==PT_PLSM)
@@ -2607,15 +2232,15 @@ void draw_parts(pixel *vid)
 						cr = R;
 						cg = G;
 						cb = B;
-						blendpixel(vid, nx, ny, cr, cg, cb, 192);
-						blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-						blendpixel(vid, nx+1, ny-1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx+1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 192);
+						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}
 				} else if (t==PT_HFLM)
 				{
@@ -2646,15 +2271,15 @@ void draw_parts(pixel *vid)
 						cr = R;
 						cg = G;
 						cb = B;
-						blendpixel(vid, nx, ny, cr, cg, cb, 192);
-						blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-						blendpixel(vid, nx+1, ny-1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx+1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 192);
+						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}
 				} else if (t==PT_FIRW&&parts[i].tmp>=3)
 				{
@@ -2685,15 +2310,15 @@ void draw_parts(pixel *vid)
 						cr = R;
 						cg = G;
 						cb = B;
-						blendpixel(vid, nx, ny, cr, cg, cb, 192);
-						blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-						blendpixel(vid, nx+1, ny-1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx+1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 192);
+						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}
 				}
 				else if (t==PT_BOMB)
@@ -2706,26 +2331,26 @@ void draw_parts(pixel *vid)
 							int newx = 0;
 							float flicker = rand()%20;
 							float gradv = flicker + fabs(parts[i].vx)*17 + fabs(parts[i].vy)*17;
-							blendpixel(vid, nx, ny, cr, cg, cb, (gradv*4)>255?255:(gradv*4) );
-							blendpixel(vid, nx+1, ny, cr, cg, cb, (gradv*2)>255?255:(gradv*2) );
-							blendpixel(vid, nx-1, ny, cr, cg, cb, (gradv*2)>255?255:(gradv*2) );
-							blendpixel(vid, nx, ny+1, cr, cg, cb, (gradv*2)>255?255:(gradv*2) );
-							blendpixel(vid, nx, ny-1, cr, cg, cb, (gradv*2)>255?255:(gradv*2) );
-							if(gradv>255) gradv=255;
-							blendpixel(vid, nx+1, ny-1, cr, cg, cb, gradv);
-							blendpixel(vid, nx-1, ny-1, cr, cg, cb, gradv);
-							blendpixel(vid, nx+1, ny+1, cr, cg, cb, gradv);
-							blendpixel(vid, nx-1, ny+1, cr, cg, cb, gradv);
+							Renderer_BlendPixel(nx, ny, cr, cg, cb, (gradv*4)>255?255:(gradv*4) );
+							Renderer_BlendPixel(nx+1, ny, cr, cg, cb, (gradv*2)>255?255:(gradv*2) );
+							Renderer_BlendPixel(nx-1, ny, cr, cg, cb, (gradv*2)>255?255:(gradv*2) );
+							Renderer_BlendPixel(nx, ny+1, cr, cg, cb, (gradv*2)>255?255:(gradv*2) );
+							Renderer_BlendPixel(nx, ny-1, cr, cg, cb, (gradv*2)>255?255:(gradv*2) );
+							if (gradv>255) gradv=255;
+							Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, gradv);
+							Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, gradv);
+							Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, gradv);
+							Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, gradv);
 							for (newx = 1; gradv>0.5; newx++) {
-								addpixel(vid, nx+newx, ny, cr, cg, cb, gradv);
-								addpixel(vid, nx-newx, ny, cr, cg, cb, gradv);
+								Renderer_AddPixel(nx+newx, ny, cr, cg, cb, gradv);
+								Renderer_AddPixel(nx-newx, ny, cr, cg, cb, gradv);
 
-								addpixel(vid, nx, ny+newx, cr, cg, cb, gradv);
-								addpixel(vid, nx, ny-newx, cr, cg, cb, gradv);
+								Renderer_AddPixel(nx, ny+newx, cr, cg, cb, gradv);
+								Renderer_AddPixel(nx, ny-newx, cr, cg, cb, gradv);
 								gradv = gradv/1.2f;
 							}
 						} else {
-							blendpixel(vid, nx, ny, cr, cg, cb, 255);
+							Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 						}
 					}
 					else if (parts[i].tmp==1) {
@@ -2737,19 +2362,19 @@ void draw_parts(pixel *vid)
 							float flicker = rand()%20;
 							float gradv = 4*parts[i].life + flicker;
 							for (newx = 0; gradv>0.5; newx++) {
-								addpixel(vid, nx+newx, ny, cr, cg, cb, gradv);
-								addpixel(vid, nx-newx, ny, cr, cg, cb, gradv);
+								Renderer_AddPixel(nx+newx, ny, cr, cg, cb, gradv);
+								Renderer_AddPixel(nx-newx, ny, cr, cg, cb, gradv);
 
-								addpixel(vid, nx, ny+newx, cr, cg, cb, gradv);
-								addpixel(vid, nx, ny-newx, cr, cg, cb, gradv);
+								Renderer_AddPixel(nx, ny+newx, cr, cg, cb, gradv);
+								Renderer_AddPixel(nx, ny-newx, cr, cg, cb, gradv);
 								gradv = gradv/1.5f;
 							}
 						} else {
-							blendpixel(vid, nx, ny, cr, cg, cb, 255);
+							Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 						}
 					}
 					else {
-						blendpixel(vid, nx, ny, 255, 255, 255, 255);
+						Renderer_BlendPixel(nx, ny, 255, 255, 255, 255);
 					}
 
 				}
@@ -2772,7 +2397,7 @@ void draw_parts(pixel *vid)
 						cg = 0;
 					if (cb<=0)
 						cb = 0;
-					blendpixel(vid, nx, ny, cr, cg, cb, 255);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 				}
 				else if (t==PT_FIRE && parts[i].life)
 				{
@@ -2806,15 +2431,15 @@ void draw_parts(pixel *vid)
 						if (cr>255) cr = 255;
 						if (cg>192) cg = 212;
 						if (cb>128) cb = 192;
-						blendpixel(vid, nx, ny, cr, cg, cb, 255);
-						blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-						blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-						blendpixel(vid, nx+1, ny-1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx+1, ny+1, cr, cg, cb, 32);
-						blendpixel(vid, nx-1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
+						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+						Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
+						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}
 					// Older Code
 					/*if(cmode == 3||cmode==4 || cmode==6)
@@ -2845,15 +2470,15 @@ void draw_parts(pixel *vid)
 					    if(cr>255) cr = 255;
 					    if(cg>192) cg = 212;
 					    if(cb>128) cb = 192;
-					    blendpixel(vid, nx, ny, cr, cg, cb, 255);
-					    blendpixel(vid, nx+1, ny, cr, cg, cb, 96);
-					    blendpixel(vid, nx-1, ny, cr, cg, cb, 96);
-					    blendpixel(vid, nx, ny+1, cr, cg, cb, 96);
-					    blendpixel(vid, nx, ny-1, cr, cg, cb, 96);
-					    blendpixel(vid, nx+1, ny-1, cr, cg, cb, 32);
-					    blendpixel(vid, nx-1, ny+1, cr, cg, cb, 32);
-					    blendpixel(vid, nx+1, ny+1, cr, cg, cb, 32);
-					    blendpixel(vid, nx-1, ny-1, cr, cg, cb, 32);
+					    Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
+					    Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 96);
+					    Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
+					    Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
+					    Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+					    Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 32);
+					    Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 32);
+					    Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
+					    Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}*/
 				}
 				else if (t==PT_LAVA && parts[i].life)
@@ -2864,11 +2489,11 @@ void draw_parts(pixel *vid)
 					if (cr>255) cr = 255;
 					if (cg>192) cg = 192;
 					if (cb>128) cb = 128;
-					blendpixel(vid, nx, ny, cr, cg, cb, 255);
-					blendpixel(vid, nx+1, ny, cr, cg, cb, 64);
-					blendpixel(vid, nx-1, ny, cr, cg, cb, 64);
-					blendpixel(vid, nx, ny+1, cr, cg, cb, 64);
-					blendpixel(vid, nx, ny-1, cr, cg, cb, 64);
+					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
+					Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 64);
+					Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 64);
+					Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 64);
+					Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 64);
 					if (cmode == CM_FIRE||cmode==CM_BLOB || cmode==CM_FANCY)
 					{
 						cr /= 32;
@@ -2889,7 +2514,7 @@ void draw_parts(pixel *vid)
 				}
 				else if (t==PT_LAVA || t==PT_SPRK)
 				{
-					vid[ny*(XRES+BARSIZE)+nx] = ptypes[t].pcolors;
+					Renderer_DrawPixel(nx,ny,ptypes[t].pcolors);
 					if (cmode == CM_FIRE||cmode==CM_BLOB || cmode==CM_FANCY)
 					{
 						if (t == PT_LAVA)
@@ -2918,7 +2543,7 @@ void draw_parts(pixel *vid)
 					}
 				}
 				else //if no special effect, draw a simple pixel
-					vid[ny*(XRES+BARSIZE)+nx] = ptypes[t].pcolors;
+					Renderer_DrawPixel(nx,ny,ptypes[t].pcolors);
 			}
 			else //heat view
 			{
@@ -2935,21 +2560,20 @@ void draw_parts(pixel *vid)
 					if (mousex>(nx-3) && mousex<(nx+3) && mousey<(ny+3) && mousey>(ny-3)) //If mous is in the head
 					{
 						sprintf(buff, "%3d", parts[i].life);  //Show HP
-						drawtext(vid, mousex-8-2*(parts[i].life<100)-2*(parts[i].life<10), mousey-12, buff, 255, 255, 255, 255);
+						Graphics_RenderText(mousex-8-2*(parts[i].life<100)-2*(parts[i].life<10), mousey-12, buff, 255, 255, 255, 255);
 					}
 
 					for (r=-2; r<=1; r++)
 					{
-						s = XRES+BARSIZE;
-						vid[(ny-2)*s+nx+r] = PIXRGB (R, G, B);
-						vid[(ny+2)*s+nx+r+1] =  PIXRGB (R, G, B);
-						vid[(ny+r+1)*s+nx-2] =  PIXRGB (R, G, B);
-						vid[(ny+r)*s+nx+2] =  PIXRGB (R, G, B);
+						Renderer_DrawPixel(nx+r, ny-2, PIXRGB (R, G, B));
+                        Renderer_DrawPixel(nx+r+1, ny+2, PIXRGB (R, G, B));
+                        Renderer_DrawPixel(nx-2, ny+r+1, PIXRGB (R, G, B));
+                        Renderer_DrawPixel(nx+2, ny+r, PIXRGB (R, G, B));
 					}
-					draw_line(vid , nx, ny+3, player[3], player[4], R, G, B, s);
-					draw_line(vid , player[3], player[4], player[7], player[8], R, G, B, s);
-					draw_line(vid , nx, ny+3, player[11], player[12], R, G, B, s);
-					draw_line(vid , player[11], player[12], player[15], player[16], R, G, B, s);
+					Renderer_DrawLine(nx, ny+3, player[3], player[4], R, G, B, 255);
+					Renderer_DrawLine(player[3], player[4], player[7], player[8], R, G, B, 255);
+					Renderer_DrawLine(nx, ny+3, player[11], player[12], R, G, B, 255);
+					Renderer_DrawLine(player[11], player[12], player[15], player[16], R, G, B, 255);
 
 					isplayer = 1;  //It's a secret. Tssss...
 				}
@@ -2960,28 +2584,28 @@ void draw_parts(pixel *vid)
 					if (mousex>(nx-3) && mousex<(nx+3) && mousey<(ny+3) && mousey>(ny-3)) //If mous is in the head
 					{
 						sprintf(buff, "%3d", parts[i].life);  //Show HP
-						drawtext(vid, mousex-8-2*(parts[i].life<100)-2*(parts[i].life<10), mousey-12, buff, 255, 255, 255, 255);
+						Graphics_RenderText(mousex-8-2*(parts[i].life<100)-2*(parts[i].life<10), mousey-12, buff, 255, 255, 255, 255);
 					}
 
 					for (r=-2; r<=1; r++)
 					{
 						s = XRES+BARSIZE;
-						vid[(ny-2)*s+nx+r] = PIXRGB (R, G, B);
-						vid[(ny+2)*s+nx+r+1] =  PIXRGB (R, G, B);
-						vid[(ny+r+1)*s+nx-2] =  PIXRGB (R, G, B);
-						vid[(ny+r)*s+nx+2] =  PIXRGB (R, G, B);
+						Renderer_DrawPixel(nx+r, ny-2, PIXRGB (R, G, B));
+                        Renderer_DrawPixel(nx+r+1, ny+2, PIXRGB (R, G, B));
+                        Renderer_DrawPixel(nx-2, ny+r+1, PIXRGB (R, G, B));
+                        Renderer_DrawPixel(nx+2, ny+r, PIXRGB (R, G, B));
 					}
-					draw_line(vid , nx, ny+3, player2[3], player2[4], R, G, B, s);
-					draw_line(vid , player2[3], player2[4], player2[7], player2[8], R, G, B, s);
-					draw_line(vid , nx, ny+3, player2[11], player2[12], R, G, B, s);
-					draw_line(vid , player2[11], player2[12], player2[15], player2[16], R, G, B, s);
+					Renderer_DrawLine(nx, ny+3, player2[3], player2[4], R, G, B, 255);
+					Renderer_DrawLine(player2[3], player2[4], player2[7], player2[8], R, G, B, 255);
+					Renderer_DrawLine(nx, ny+3, player2[11], player2[12], R, G, B, 255);
+					Renderer_DrawLine(player2[11], player2[12], player2[15], player2[16], R, G, B, 255);
 
 					isplayer2 = 1;  //It's a secret. Tssss...
 				}
 				else
 				{
-					vid[ny*(XRES+BARSIZE)+nx] = PIXRGB(R, G, B);
-					//blendpixel(vid, nx+1, ny, R, G, B, 255);
+					Renderer_DrawPixel(nx,ny,PIXRGB(R, G, B));
+					//Renderer_BlendPixel(nx+1, ny, R, G, B, 255);
 				}
 			}
 			//blob view!
@@ -3011,35 +2635,30 @@ void draw_parts(pixel *vid)
 				}
 
 				//if(vid[(ny-1)*YRES+(nx-1)]!=0){
-				//	blendpixel(vid, nx, ny-1, R, G, B, 46);
+				//	Renderer_BlendPixel(nx, ny-1, R, G, B, 46);
 				//}
 
-				blendpixel(vid, nx+1, ny, cr, cg, cb, 223);
-				blendpixel(vid, nx-1, ny, cr, cg, cb, 223);
-				blendpixel(vid, nx, ny+1, cr, cg, cb, 223);
-				blendpixel(vid, nx, ny-1, cr, cg, cb, 223);
+				Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 223);
+				Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 223);
+				Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 223);
+				Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 223);
 
-				blendpixel(vid, nx+1, ny-1, cr, cg, cb, 112);
-				blendpixel(vid, nx-1, ny-1, cr, cg, cb, 112);
-				blendpixel(vid, nx+1, ny+1, cr, cg, cb, 112);
-				blendpixel(vid, nx-1, ny+1, cr, cg, cb, 112);
+				Renderer_BlendPixel(nx+1, ny-1, cr, cg, cb, 112);
+				Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 112);
+				Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 112);
+				Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 112);
 			}
 		}
-#endif
 	}
-#ifdef OpenGL
-	glFlush ();
-#endif
-
 }
 
 //draws the photon colors in the HUD
-void draw_wavelengths(pixel *vid, int x, int y, int h, int wl)
+void draw_wavelengths(int x, int y, int h, int wl)
 {
 	int i,cr,cg,cb,j;
 	int tmp;
-	fillrect(vid,x-1,y-1,30+1,h+1,64,64,64,255); // coords -1 size +1 to work around bug in fillrect - TODO: fix fillrect
-	for (i=0;i<30;i++)
+	Renderer_FillRectangle(x-1,y-1,30+1,h+1,64,64,64,255); // coords -1 size +1 to work around bug in fillrect - TODO: fix fillrect
+	for (i=0; i<30; i++)
 	{
 		if ((wl>>i)&1)
 		{
@@ -3059,27 +2678,27 @@ void draw_wavelengths(pixel *vid, int x, int y, int h, int wl)
 			cr *= tmp;
 			cg *= tmp;
 			cb *= tmp;
-			for (j=0;j<h;j++) blendpixel(vid,x+29-i,y+j,cr>255?255:cr,cg>255?255:cg,cb>255?255:cb,255);
+			for (j=0; j<h; j++) Renderer_BlendPixel(x+29-i,y+j,cr>255?255:cr,cg>255?255:cg,cb>255?255:cb,255);
 		}
 	}
 }
 
-void render_signs(pixel *vid_buf)
+void Graphics_RenderSigns()
 {
 	int i, j, x, y, w, h, dx, dy,mx,my,b=1,bq;
 	for (i=0; i<MAXSIGNS; i++)
 		if (signs[i].text[0])
 		{
 			char buff[256];  //Buffer
-			get_sign_pos(i, &x, &y, &w, &h);
-			clearrect(vid_buf, x, y, w, h);
-			drawrect(vid_buf, x, y, w, h, 192, 192, 192, 255);
+			Interface_GetSignPosition(i, &x, &y, &w, &h);
+			Renderer_ClearRectangle(x, y, w, h);
+			Renderer_DrawRectangle(x, y, w, h, 192, 192, 192, 255);
 
 			//Displaying special information
 			if (strcmp(signs[i].text, "{p}")==0)
 			{
 				sprintf(buff, "Pressure: %3.2f", pv[signs[i].y/CELL][signs[i].x/CELL]);  //...pressure
-				drawtext(vid_buf, x+3, y+3, buff, 255, 255, 255, 255);
+				Graphics_RenderText(x+3, y+3, buff, 255, 255, 255, 255);
 			}
 			if (strcmp(signs[i].text, "{t}")==0)
 			{
@@ -3087,27 +2706,27 @@ void render_signs(pixel *vid_buf)
 					sprintf(buff, "Temp: %4.2f", parts[pmap[signs[i].y][signs[i].x]>>8].temp-273.15);  //...tempirature
 				else
 					sprintf(buff, "Temp: 0.00");  //...tempirature
-				drawtext(vid_buf, x+3, y+3, buff, 255, 255, 255, 255);
+				Graphics_RenderText(x+3, y+3, buff, 255, 255, 255, 255);
 			}
 
-			if(sregexp(signs[i].text, "^{c:[0-9]*|.*}$")==0)
+			if (sregexp(signs[i].text, "^{c:[0-9]*|.*}$")==0)
 			{
 				int sldr, startm;
 				memset(buff, 0, sizeof(buff));
-				for(sldr=3; signs[i].text[sldr-1] != '|'; sldr++)
+				for (sldr=3; signs[i].text[sldr-1] != '|'; sldr++)
 					startm = sldr + 1;
 				sldr = startm;
-				while(signs[i].text[sldr] != '}')
+				while (signs[i].text[sldr] != '}')
 				{
 					buff[sldr - startm] = signs[i].text[sldr];
 					sldr++;
 				}
-				drawtext(vid_buf, x+3, y+3, buff, 0, 191, 255, 255);
+				Graphics_RenderText(x+3, y+3, buff, 0, 191, 255, 255);
 			}
 
 			//Usual text
-			if(strcmp(signs[i].text, "{p}") && strcmp(signs[i].text, "{t}") && sregexp(signs[i].text, "^{c:[0-9]*|.*}$"))
-				drawtext(vid_buf, x+3, y+3, signs[i].text, 255, 255, 255, 255);
+			if (strcmp(signs[i].text, "{p}") && strcmp(signs[i].text, "{t}") && sregexp(signs[i].text, "^{c:[0-9]*|.*}$"))
+				Graphics_RenderText(x+3, y+3, signs[i].text, 255, 255, 255, 255);
 
 			x = signs[i].x;
 			y = signs[i].y;
@@ -3115,7 +2734,7 @@ void render_signs(pixel *vid_buf)
 			dy = (signs[i].y > 18) ? -1 : 1;
 			for (j=0; j<4; j++)
 			{
-				drawpixel(vid_buf, x, y, 192, 192, 192, 255);
+				Renderer_BlendPixel(x, y, 192, 192, 192, 255);
 				x+=dx;
 				y+=dy;
 			}
@@ -3129,51 +2748,6 @@ void render_signs(pixel *vid_buf)
 				signs[i].y = my;
 			}
 		}
-}
-
-void render_fire(pixel *dst)
-{
-	int i,j,x,y,r,g,b;
-	for (j=0; j<YRES/CELL; j++)
-		for (i=0; i<XRES/CELL; i++)
-		{
-			r = fire_r[j][i];
-			g = fire_g[j][i];
-			b = fire_b[j][i];
-			if (r || g || b)
-				for (y=-CELL+1; y<2*CELL; y++)
-					for (x=-CELL+1; x<2*CELL; x++)
-						addpixel(dst, i*CELL+x, j*CELL+y, r, g, b, fire_alpha[y+CELL][x+CELL]);
-			for (y=-1; y<2; y++)
-				for (x=-1; x<2; x++)
-					if (i+x>=0 && j+y>=0 && i+x<XRES/CELL && j+y<YRES/CELL && (x || y))
-					{
-						r += fire_r[j+y][i+x] / 8;
-						g += fire_g[j+y][i+x] / 8;
-						b += fire_b[j+y][i+x] / 8;
-					}
-			r /= 2;
-			g /= 2;
-			b /= 2;
-			fire_r[j][i] = r>4 ? r-4 : 0;
-			fire_g[j][i] = g>4 ? g-4 : 0;
-			fire_b[j][i] = b>4 ? b-4 : 0;
-		}
-}
-
-void prepare_alpha(void)
-{
-	int x,y,i,j;
-	float temp[CELL*3][CELL*3];
-	memset(temp, 0, sizeof(temp));
-	for (x=0; x<CELL; x++)
-		for (y=0; y<CELL; y++)
-			for (i=-CELL; i<CELL; i++)
-				for (j=-CELL; j<CELL; j++)
-					temp[y+CELL+j][x+CELL+i] += expf(-0.1f*(i*i+j*j));
-	for (x=0; x<CELL*3; x++)
-		for (y=0; y<CELL*3; y++)
-			fire_alpha[y][x] = (int)(255.0f*temp[y][x]/(CELL*CELL));
 }
 
 pixel *render_packed_rgb(void *image, int width, int height, int cmp_size)
@@ -3207,88 +2781,8 @@ pixel *render_packed_rgb(void *image, int width, int height, int cmp_size)
 	return res;
 }
 
-void draw_image(pixel *vid, pixel *img, int x, int y, int w, int h, int a)
-{
-	int i, j, r, g, b;
-	for (j=0; j<h; j++)
-		for (i=0; i<w; i++)
-		{
-			r = PIXR(*img);
-			g = PIXG(*img);
-			b = PIXB(*img);
-			drawpixel(vid, x+i, y+j, r, g, b, a);
-			img++;
-		}
-}
-
-void dim_copy(pixel *dst, pixel *src) //old persistent, unused
-{
-	int i,r,g,b;
-	for (i=0; i<XRES*YRES; i++)
-	{
-		r = PIXR(src[i]);
-		g = PIXG(src[i]);
-		b = PIXB(src[i]);
-		if (r>0)
-			r--;
-		if (g>0)
-			g--;
-		if (b>0)
-			b--;
-		dst[i] = PIXRGB(r,g,b);
-	}
-}
-
-void dim_copy_pers(pixel *dst, pixel *src) //for persistent view, reduces rgb slowly
-{
-	int i,r,g,b;
-	for (i=0; i<(XRES+BARSIZE)*YRES; i++)
-	{
-		r = PIXR(src[i]);
-		g = PIXG(src[i]);
-		b = PIXB(src[i]);
-		if (r>0)
-			r--;
-		if (g>0)
-			g--;
-		if (b>0)
-			b--;
-		dst[i] = PIXRGB(r,g,b);
-	}
-}
-
-void render_zoom(pixel *img) //draws the zoom box
-{
-	int x, y, i, j;
-	pixel pix;
-	drawrect(img, zoom_wx-2, zoom_wy-2, ZSIZE*ZFACTOR+2, ZSIZE*ZFACTOR+2, 192, 192, 192, 255);
-	drawrect(img, zoom_wx-1, zoom_wy-1, ZSIZE*ZFACTOR, ZSIZE*ZFACTOR, 0, 0, 0, 255);
-	clearrect(img, zoom_wx, zoom_wy, ZSIZE*ZFACTOR, ZSIZE*ZFACTOR);
-	for (j=0; j<ZSIZE; j++)
-		for (i=0; i<ZSIZE; i++)
-		{
-			pix = img[(j+zoom_y)*(XRES+BARSIZE)+(i+zoom_x)];
-			for (y=0; y<ZFACTOR-1; y++)
-				for (x=0; x<ZFACTOR-1; x++)
-					img[(j*ZFACTOR+y+zoom_wy)*(XRES+BARSIZE)+(i*ZFACTOR+x+zoom_wx)] = pix;
-		}
-	if (zoom_en)
-	{
-		for (j=-1; j<=ZSIZE; j++)
-		{
-			xor_pixel(zoom_x+j, zoom_y-1, img);
-			xor_pixel(zoom_x+j, zoom_y+ZSIZE, img);
-		}
-		for (j=0; j<ZSIZE; j++)
-		{
-			xor_pixel(zoom_x-1, zoom_y+j, img);
-			xor_pixel(zoom_x+ZSIZE, zoom_y+j, img);
-		}
-	}
-}
-
 //gets the thumbnail preview for stamps
-pixel *prerender_save(void *save, int size, int *width, int *height)
+pixel *Graphics_PrerenderSave(void *save, int size, int *width, int *height)
 {
 	unsigned char *d,*c=save;
 	int i,j,k,x,y,rx,ry,p=0;
@@ -3449,10 +2943,10 @@ pixel *prerender_save(void *save, int size, int *width, int *height)
 						fb[(y+k+1)*w+x-2] = PIXRGB(255, 224, 178);
 						fb[(y+k)*w+x+2] = PIXRGB(255, 224, 178);
 					}
-					draw_line(fb , x, y+3, x-1, y+6, 255, 255, 255, w);
-					draw_line(fb , x-1, y+6, x-3, y+12, 255, 255, 255, w);
-					draw_line(fb , x, y+3, x+1, y+6, 255, 255, 255, w);
-					draw_line(fb , x+1, y+6, x+3, y+12, 255, 255, 255, w);
+					Renderer_DrawLine(x, y+3, x-1, y+6, 255, 255, 255, w);
+					Renderer_DrawLine(x-1, y+6, x-3, y+12, 255, 255, 255, w);
+					Renderer_DrawLine(x, y+3, x+1, y+6, 255, 255, 255, w);
+					Renderer_DrawLine(x+1, y+6, x+3, y+12, 255, 255, 255, w);
 				}
 				else if (j==PT_STKM2)
 				{
@@ -3464,10 +2958,10 @@ pixel *prerender_save(void *save, int size, int *width, int *height)
 						fb[(y+k+1)*w+x-2] = PIXRGB(255, 224, 178);
 						fb[(y+k)*w+x+2] = PIXRGB(255, 224, 178);
 					}
-					draw_line(fb , x, y+3, x-1, y+6, 255, 255, 255, w);
-					draw_line(fb , x-1, y+6, x-3, y+12, 255, 255, 255, w);
-					draw_line(fb , x, y+3, x+1, y+6, 255, 255, 255, w);
-					draw_line(fb , x+1, y+6, x+3, y+12, 255, 255, 255, w);
+					Renderer_DrawLine(x, y+3, x-1, y+6, 255, 255, 255, w);
+					Renderer_DrawLine(x-1, y+6, x-3, y+12, 255, 255, 255, w);
+					Renderer_DrawLine(x, y+3, x+1, y+6, 255, 255, 255, w);
+					Renderer_DrawLine(x+1, y+6, x+3, y+12, 255, 255, 255, w);
 				}
 				else
 					fb[y*w+x] = ptypes[j].pcolors;
@@ -3485,7 +2979,7 @@ corrupt:
 	return NULL;
 }
 
-int render_thumb(void *thumb, int size, int bzip2, pixel *vid_buf, int px, int py, int scl)
+int Graphics_RenderThumbnail(void *thumb, int size, int bzip2, int px, int py, int scl)
 {
 	unsigned char *d,*c=thumb;
 	int i,j,x,y,a,t,r,g,b,sx,sy;
@@ -3556,7 +3050,7 @@ int render_thumb(void *thumb, int size, int bzip2, pixel *vid_buf, int px, int p
 				b = (b*a)>>8;
 			}
 
-			drawpixel(vid_buf, px+sx, py+sy, r, g, b, 255);
+			Renderer_DrawPixel(px+sx, py+sy, PIXRGB(r,g,b));
 			sx++;
 		}
 		sy++;
@@ -3573,27 +3067,27 @@ corrupt:
 }
 
 //draws the cursor
-void render_cursor(pixel *vid, int x, int y, int t, int rx, int ry)
+void Graphics_RenderCursor(int x, int y, int t, int rx, int ry)
 {
 	int i,j,c;
 	if (t<PT_NUM||t==SPC_AIR||t==SPC_HEAT||t==SPC_COOL||t==SPC_VACUUM)
 	{
 		if (rx<=0)
-			xor_pixel(x, y, vid);
+			Renderer_XORPixel(x, y);
 		else if (ry<=0)
-			xor_pixel(x, y, vid);
+			Renderer_XORPixel(x, y);
 		if (rx+ry<=0)
-			xor_pixel(x, y, vid);
+			Renderer_XORPixel(x, y);
 		else if (CURRENT_BRUSH==SQUARE_BRUSH)
 		{
 			for (j=0; j<=ry; j++)
 				for (i=0; i<=rx; i++)
 					if (i*j<=ry*rx && ((i+1)>rx || (j+1)>ry))
 					{
-						xor_pixel(x+i, y+j, vid);
-						xor_pixel(x-i, y-j, vid);
-						if (i&&j)xor_pixel(x+i, y-j, vid);
-						if (i&&j)xor_pixel(x-i, y+j, vid);
+						Renderer_XORPixel(x+i, y+j);
+						Renderer_XORPixel(x-i, y-j);
+						if (i&&j)Renderer_XORPixel(x+i, y-j);
+						if (i&&j)Renderer_XORPixel(x-i, y+j);
 					}
 		}
 		else if (CURRENT_BRUSH==CIRCLE_BRUSH)
@@ -3601,10 +3095,10 @@ void render_cursor(pixel *vid, int x, int y, int t, int rx, int ry)
 				for (i=0; i<=rx; i++)
 					if ((pow(i,2))/(pow(rx,2))+(pow(j,2))/(pow(ry,2))<=1 && ((pow(i+1,2))/(pow(rx,2))+(pow(j,2))/(pow(ry,2))>1 || (pow(i,2))/(pow(rx,2))+(pow(j+1,2))/(pow(ry,2))>1))
 					{
-						xor_pixel(x+i, y+j, vid);
-						if (j) xor_pixel(x+i, y-j, vid);
-						if (i) xor_pixel(x-i, y+j, vid);
-						if (i&&j) xor_pixel(x-i, y-j, vid);
+						Renderer_XORPixel(x+i, y+j);
+						if (j) Renderer_XORPixel(x+i, y-j);
+						if (i) Renderer_XORPixel(x-i, y+j);
+						if (i&&j) Renderer_XORPixel(x-i, y-j);
 					}
 	}
 	else //wall cursor
@@ -3624,13 +3118,13 @@ void render_cursor(pixel *vid, int x, int y, int t, int rx, int ry)
 
 		for (i=0; i<CELL+c; i++)
 		{
-			xor_pixel(x+i, y, vid);
-			xor_pixel(x+i, y+CELL+c-1, vid);
+			Renderer_XORPixel(x+i, y);
+			Renderer_XORPixel(x+i, y+CELL+c-1);
 		}
 		for (i=1; i<CELL+c-1; i++)
 		{
-			xor_pixel(x, y+i, vid);
-			xor_pixel(x+CELL+c-1, y+i, vid);
+			Renderer_XORPixel(x, y+i);
+			Renderer_XORPixel(x+CELL+c-1, y+i);
 		}
 	}
 }
@@ -3643,20 +3137,6 @@ void sdl_open(void)
 		exit(1);
 	}
 	atexit(SDL_Quit);
-#ifdef OpenGL
-	sdl_scrn=SDL_SetVideoMode(XRES*sdl_scale + BARSIZE*sdl_scale,YRES*sdl_scale + MENUSIZE*sdl_scale,32,SDL_OPENGL);
-	SDL_GL_SetAttribute (SDL_GL_DOUBLEBUFFER, 1);
-	Enable2D ();
-	//   glBegin(GL_TRIANGLES);
-	//   glColor3ub (255, 0, 0);
-	//   glVertex2d (0, 0);
-	//   glColor3ub (0, 255, 0);
-	//   glVertex2d (640,0);
-	//    glColor3ub (0, 0, 255);
-	//    glVertex2d (50, 50);
-	//glEnd ();
-	//glFlush ();
-#else
 #ifdef PIX16
 	if (kiosk_enable)
 		sdl_scrn=SDL_SetVideoMode(XRES*sdl_scale + BARSIZE*sdl_scale,YRES*sdl_scale + MENUSIZE*sdl_scale,16,SDL_FULLSCREEN|SDL_SWSURFACE);
@@ -3667,7 +3147,6 @@ void sdl_open(void)
 		sdl_scrn=SDL_SetVideoMode(XRES*sdl_scale + BARSIZE*sdl_scale,YRES*sdl_scale + MENUSIZE*sdl_scale,32,SDL_FULLSCREEN|SDL_SWSURFACE);
 	else
 		sdl_scrn=SDL_SetVideoMode(XRES*sdl_scale + BARSIZE*sdl_scale,YRES*sdl_scale + MENUSIZE*sdl_scale,32,SDL_SWSURFACE);
-#endif
 #endif
 	if (!sdl_scrn)
 	{
@@ -3680,34 +3159,422 @@ void sdl_open(void)
 	//SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 }
 
-#ifdef OpenGL
-void Enable2D ()
+_INLINE_ void Graphics_RenderWalls()
 {
-	int ViewPort[4]; //Holds screen info
-
-	glGetIntegerv (GL_VIEWPORT, ViewPort);
-
-	glMatrixMode (GL_PROJECTION);
-	glPushMatrix ();
-	glLoadIdentity ();
-
-	glOrtho (0, ViewPort[2], ViewPort[3], 0, -1, 1);
-	glMatrixMode (GL_MODELVIEW);
-	glPushMatrix ();
-	glLoadIdentity ();
-
-	glEnable (GL_BLEND);
-	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	glHint( GL_LINE_SMOOTH_HINT, GL_NICEST);
-	glHint( GL_POINT_SMOOTH_HINT, GL_NICEST);
+	if (cmode==CM_BLOB)
+		Graphics_RenderWallsBlob();
+	else
+		Graphics_RenderWallsNormal();
 }
-void RenderScene ()
+
+_INLINE_ void Graphics_RenderWallsBlob()
 {
-	SDL_GL_SwapBuffers ();
+	int i, j, x, y, t, nx, ny, cr, cg, cb;
+	float lx, ly;
+	
+	for (y=0; y<YRES/CELL; y++)
+	{
+		for (x=0; x<XRES/CELL; x++)
+		{
+			if (bmap[y][x]==WL_WALL)
+				for (j=0; j<CELL; j++)
+					for (i=0; i<CELL; i++)
+						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+			else if (bmap[y][x]==WL_DESTROYALL)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+			else if (bmap[y][x]==WL_ALLOWLIQUID)
+			{
+				for (j=0; j<CELL; j++)
+					for (i=0; i<CELL; i++)
+						if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
+							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0xC0, 0xC0, 0xC0);
+				if (emap[y][x])
+				{
+					cr = cg = cb = 16;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_FAN)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0xFF);
+			else if (bmap[y][x]==WL_DETECT)
+			{
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0xFF, 0x80, 0x80);
+				if (emap[y][x])
+				{
+					cr = 255;
+					cg = 32;
+					cb = 8;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_EWALL)
+			{
+				if (emap[y][x])
+				{
+					cr = cg = cb = 128;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+					for (j=0; j<CELL; j++)
+						for (i=0; i<CELL; i++)
+							if (i&j&1)
+								Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+				}
+				else
+				{
+					for (j=0; j<CELL; j++)
+						for (i=0; i<CELL; i++)
+							pmap[y*CELL+j][x*CELL+i] = 0x7FFFFFFF;
+					for (j=0; j<CELL; j++)
+						for (i=0; i<CELL; i++)
+							if (!(i&j&1))
+								Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+				}
+			}
+			else if (bmap[y][x]==WL_WALLELEC)
+			{
+				for (j=0; j<CELL; j++)
+					for (i=0; i<CELL; i++)
+					{
+						pmap[y*CELL+j][x*CELL+i] = 0x7FFFFFFF;
+						if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
+							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0xC0, 0xC0, 0xC0);
+						else
+							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+					}
+				if (emap[y][x])
+				{
+					cr = cg = cb = 16;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_ALLOWALLELEC)
+			{
+				for (j=0; j<CELL; j++)
+					for (i=0; i<CELL; i++)
+					{
+						//pmap[y*CELL+j][x*CELL+i] = 0x7FFFFFFF;
+						if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
+							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0xFF, 0xFF, 0x22);
+					}
+				if (emap[y][x])
+				{
+					cr = cg = cb = 16;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_ALLOWGAS)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x57, 0x97, 0x77);
+			else if (bmap[y][x]==WL_ALLOWAIR)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x3C, 0x3C, 0x3C);
+			else if (bmap[y][x]==WL_ALLOWSOLID)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x57, 0x57, 0x57);
+			else if (bmap[y][x]==WL_EHOLE)
+			{
+				if (emap[y][x])
+				{
+					for (j=0; j<CELL; j++)
+						for (i=(j)&1; i<CELL; i++)
+							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x24, 0x24, 0x24);
+					for (j=0; j<CELL; j+=2)
+						for (i=(j)&1; i<CELL; i+=2)
+							Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x000000));
+				}
+				else
+					for (j=0; j<CELL; j+=2)
+						for (i=(j)&1; i<CELL; i+=2)
+							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x24, 0x24, 0x24);
+				if (emap[y][x])
+				{
+					cr = cg = cb = 16;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_STREAM)
+			{
+				lx = x*CELL + CELL*0.5f;
+				ly = y*CELL + CELL*0.5f;
+				for (t=0; t<1024; t++)
+				{
+					nx = (int)(lx+0.5f);
+					ny = (int)(ly+0.5f);
+					if (nx<0 || nx>=XRES || ny<0 || ny>=YRES)
+						break;
+					Renderer_AddPixel(nx, ny, 255, 255, 255, 64);
+					i = nx/CELL;
+					j = ny/CELL;
+					lx += vx[j][i]*0.125f;
+					ly += vy[j][i]*0.125f;
+					if (bmap[j][i]==WL_STREAM && i!=x && j!=y)
+						break;
+				}
+				Graphics_RenderText(x*CELL, y*CELL-2, "\x8D", 255, 255, 255, 128);
+			}
+			if (emap[y][x] && (!sys_pause||framerender))
+				emap[y][x] --;
+		}
+	}
 }
-void ClearScreen()
+
+_INLINE_ void Graphics_RenderWallsNormal()
 {
-	glClear(GL_COLOR_BUFFER_BIT);
+	int i, j, x, y, t, nx, ny, cr, cg, cb;
+	float lx, ly;
+	
+	for (y=0; y<YRES/CELL; y++)
+	{
+		for (x=0; x<XRES/CELL; x++)
+		{
+			if (bmap[y][x]==WL_WALL)
+				Renderer_FillRectangle(x*CELL,y*CELL,CELL,CELL,0x80,0x80,0x80,0xFF);
+			else if (bmap[y][x]==WL_DESTROYALL)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x808080));
+			else if (bmap[y][x]==WL_ALLOWLIQUID)
+			{
+				for (j=0; j<CELL; j++)
+					for (i=0; i<CELL; i++)
+						if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
+							Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0xC0C0C0));
+				if (emap[y][x])
+				{
+					cr = cg = cb = 16;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_FAN)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x8080FF));
+			else if (bmap[y][x]==WL_DETECT)
+			{
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0xFF8080));
+				if (emap[y][x])
+				{
+					cr = 255;
+					cg = 32;
+					cb = 8;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_EWALL)
+			{
+				if (emap[y][x])
+				{
+					cr = cg = cb = 128;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+					for (j=0; j<CELL; j++)
+						for (i=0; i<CELL; i++)
+							if (i&j&1)
+								Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x808080));
+				}
+				else
+				{
+					for (j=0; j<CELL; j++)
+						for (i=0; i<CELL; i++)
+							pmap[y*CELL+j][x*CELL+i] = 0x7FFFFFFF;
+					for (j=0; j<CELL; j++)
+						for (i=0; i<CELL; i++)
+							if (!(i&j&1))
+								Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x808080));
+				}
+			}
+			else if (bmap[y][x]==WL_WALLELEC)
+			{
+				for (j=0; j<CELL; j++)
+					for (i=0; i<CELL; i++)
+					{
+						pmap[y*CELL+j][x*CELL+i] = 0x7FFFFFFF;
+						if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
+							Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0xC0C0C0));
+						else
+							Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x808080));
+					}
+				if (emap[y][x])
+				{
+					cr = cg = cb = 16;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_ALLOWALLELEC)
+			{
+				for (j=0; j<CELL; j++)
+					for (i=0; i<CELL; i++)
+					{
+						//pmap[y*CELL+j][x*CELL+i] = 0x7FFFFFFF;
+						if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
+							Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0xFFFF22));
+					}
+				if (emap[y][x])
+				{
+					cr = cg = cb = 16;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_ALLOWAIR)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x3C3C3C));
+			else if (bmap[y][x]==WL_ALLOWGAS)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x579777));
+			else if (bmap[y][x]==WL_ALLOWSOLID)
+				for (j=0; j<CELL; j+=2)
+					for (i=(j>>1)&1; i<CELL; i+=2)
+						Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x575757));
+			else if (bmap[y][x]==WL_EHOLE)
+			{
+				if (emap[y][x])
+				{
+					for (j=0; j<CELL; j++)
+						for (i=(j)&1; i<CELL; i++)
+							Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x242424));
+					for (j=0; j<CELL; j+=2)
+						for (i=(j)&1; i<CELL; i+=2)
+							Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x000000));
+				}
+				else
+					for (j=0; j<CELL; j+=2)
+						for (i=(j)&1; i<CELL; i+=2)
+							Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x242424));
+				if (emap[y][x])
+				{
+					cr = cg = cb = 16;
+					cr += fire_r[y][x];
+					if (cr > 255) cr = 255;
+					fire_r[y][x] = cr;
+					cg += fire_g[y][x];
+					if (cg > 255) cg = 255;
+					fire_g[y][x] = cg;
+					cb += fire_b[y][x];
+					if (cb > 255) cb = 255;
+					fire_b[y][x] = cb;
+				}
+			}
+			else if (bmap[y][x]==WL_STREAM)
+			{
+				lx = x*CELL + CELL*0.5f;
+				ly = y*CELL + CELL*0.5f;
+				for (t=0; t<1024; t++)
+				{
+					nx = (int)(lx+0.5f);
+					ny = (int)(ly+0.5f);
+					if (nx<0 || nx>=XRES || ny<0 || ny>=YRES)
+						break;
+					Renderer_AddPixel(nx, ny, 255, 255, 255, 64);
+					i = nx/CELL;
+					j = ny/CELL;
+					lx += vx[j][i]*0.125f;
+					ly += vy[j][i]*0.125f;
+					if (bmap[j][i]==WL_STREAM && i!=x && j!=y)
+						break;
+				}
+				Graphics_RenderText(x*CELL, y*CELL-2, "\x8D", 255, 255, 255, 128);
+			}
+			if (emap[y][x] && (!sys_pause||framerender))
+				emap[y][x] --;
+		}
+	}
 }
-#endif

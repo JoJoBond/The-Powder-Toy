@@ -39,6 +39,7 @@
 extern unsigned cmode;
 extern SDL_Surface *sdl_scrn;
 extern int sdl_scale;
+extern unsigned frame_idx;
 
 extern unsigned char fire_r[YRES/CELL][XRES/CELL];
 extern unsigned char fire_g[YRES/CELL][XRES/CELL];
@@ -50,68 +51,45 @@ extern pixel *pers_bg;
 
 pixel *rescale_img(pixel *src, int sw, int sh, int *qw, int *qh, int f);
 
-void sdl_blit_1(int x, int y, int w, int h, pixel *src, int pitch);
-
-void sdl_blit_2(int x, int y, int w, int h, pixel *src, int pitch);
-
-void sdl_blit(int x, int y, int w, int h, pixel *src, int pitch);
-
 void drawblob(pixel *vid, int x, int y, unsigned char cr, unsigned char cg, unsigned char cb);
 
-void draw_tool(pixel *vid_buf, int b, int sl, int sr, unsigned pc, unsigned iswall);
+//void draw_tool(int b, int sl, int sr, unsigned pc, unsigned iswall);
 
-int draw_tool_xy(pixel *vid_buf, int x, int y, int b, unsigned pc);
+int Graphics_RenderToolsXY(int x, int y, int b, unsigned pc);
 
-void draw_menu(pixel *vid_buf, int i, int hover);
+void Graphics_RenderMenu(int i, int hover);
 
-#if defined(WIN32) && !defined(__GNUC__)
-_inline void drawpixel(pixel *vid, int x, int y, int r, int g, int b, int a);
-#else
-extern inline void drawpixel(pixel *vid, int x, int y, int r, int g, int b, int a);
-#endif
+void drawpixel(pixel *vid, int x, int y, int r, int g, int b, int a);
 
-#if defined(WIN32) && !defined(__GNUC__)
-_inline int drawchar(pixel *vid, int x, int y, int c, int r, int g, int b, int a);
-#else
-extern inline int drawchar(pixel *vid, int x, int y, int c, int r, int g, int b, int a);
-#endif
+int drawchar(pixel *vid, int x, int y, int c, int r, int g, int b, int a);
 
-int drawtext(pixel *vid, int x, int y, const char *s, int r, int g, int b, int a);
+int Graphics_RenderText( int x, int y, const char *s, int r, int g, int b, int a);
 
-int drawtextwrap(pixel *vid, int x, int y, int w, const char *s, int r, int g, int b, int a);
+int Graphics_RenderWrapText(int x, int y, int w, const char *s, int r, int g, int b, int a);
 
 void drawrect(pixel *vid, int x, int y, int w, int h, int r, int g, int b, int a);
 
-void fillrect(pixel *vid, int x, int y, int w, int h, int r, int g, int b, int a);
-
 void clearrect(pixel *vid, int x, int y, int w, int h);
 
-void drawdots(pixel *vid, int x, int y, int h, int r, int g, int b, int a);
+int GetTextWidth(char *s);
 
-int textwidth(char *s);
+int Graphics_RenderMaxText(int x, int y, int w, char *s, int r, int g, int b, int a);
 
-int drawtextmax(pixel *vid, int x, int y, int w, char *s, int r, int g, int b, int a);
+int GetTextNWidth(char *s, int n);
 
-int textnwidth(char *s, int n);
+void GetTextNPos(char *s, int n, int w, int *cx, int *cy);
 
-void textnpos(char *s, int n, int w, int *cx, int *cy);
+int GetTextWidthX(char *s, int w);
 
-int textwidthx(char *s, int w);
+int GetTextPosXY(char *s, int width, int w, int h);
 
-int textposxy(char *s, int width, int w, int h);
-int textwrapheight(char *s, int width);
+int GetTextWrapHeight(char *s, int width);
 
-#if defined(WIN32) && !defined(__GNUC__)
-_inline void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a);
-#else
 void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a);
-#endif
 
-void draw_icon(pixel *vid_buf, int x, int y, char ch, int flag);
+void Graphics_RenderIcon(int x, int y, char ch, int flag);
 
 void draw_air(pixel *vid);
-
-void draw_line(pixel *vid, int x1, int y1, int x2, int y2, int r, int g, int b, int a);
 
 void addpixel(pixel *vid, int x, int y, int r, int g, int b, int a);
 
@@ -121,34 +99,24 @@ void xor_line(int x1, int y1, int x2, int y2, pixel *vid);
 
 void xor_rect(pixel *vid, int x, int y, int w, int h);
 
-void draw_parts(pixel *vid);
-void draw_wavelengths(pixel *vid, int x, int y, int h, int wl);
-void render_signs(pixel *vid_buf);
+void Graphics_RenderParticles();
 
-void render_fire(pixel *dst);
+void draw_wavelengths(int x, int y, int h, int wl);
 
-void prepare_alpha(void);
+void Graphics_RenderSigns();
 
-void draw_image(pixel *vid, pixel *img, int x, int y, int w, int h, int a);
+pixel *Graphics_PrerenderSave(void *save, int size, int *width, int *height);
 
-void dim_copy(pixel *dst, pixel *src);
+int Graphics_RenderThumbnail(void *thumb, int size, int bzip2, int px, int py, int scl);
 
-void dim_copy_pers(pixel *dst, pixel *src);
-
-void render_zoom(pixel *img);
-
-pixel *prerender_save(void *save, int size, int *width, int *height);
-
-int render_thumb(void *thumb, int size, int bzip2, pixel *vid_buf, int px, int py, int scl);
-
-void render_cursor(pixel *vid, int x, int y, int t, int rx, int ry);
+void Graphics_RenderCursor(int x, int y, int t, int rx, int ry);
 
 void sdl_open(void);
 
-#ifdef OpenGL
-void Enable2D ();
-void RenderScene ();
-void ClearScreen();
-#endif
+_EXTERN_ _INLINE_ void Graphics_RenderWalls();
+
+_EXTERN_ _INLINE_ void Graphics_RenderWallsBlob();
+
+_EXTERN_ _INLINE_ void Graphics_RenderWallsNormal();
 
 #endif

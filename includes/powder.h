@@ -450,7 +450,7 @@ static const part_type ptypes[PT_NUM] =
 	{"BCOL",	PIXPACK(0x333333),	0.4f,	0.04f * CFDS,	0.94f,	0.95f,	-0.1f,	0.3f,	0.00f,	0.000f	* CFDS,	1,	0,		0,	5,	2,	1,	90,		SC_POWDERS,		R_TEMP+0.0f	+273.15f,	150,	"Broken Coal. Heavy particles. See COAL", ST_SOLID, TYPE_PART, &update_BCOL},
 	{"PCLN",	PIXPACK(0x3B3B10),	0.0f,	0.00f * CFDS,	0.90f,	0.00f,	0.0f,	0.0f,	0.00f,	0.000f	* CFDS,	0,	0,		0,	0,	1,	1,	100,	SC_ELEC,		R_TEMP+0.0f	+273.15f,	251,	"Solid. When activated, duplicates any particles it touches.", ST_NONE, TYPE_SOLID, &update_PCLN},
 	{"HSWC",	PIXPACK(0x3B1010),	0.0f,	0.00f * CFDS,	0.90f,	0.00f,	0.0f,	0.0f,	0.00f,	0.000f	* CFDS,	0,	0,		0,	1,	1,	1,	100,	SC_ELEC,		R_TEMP+0.0f	+273.15f,	251,	"Heat switch. Conducts Heat only when activated", ST_NONE, TYPE_SOLID, &update_HSWC},
-	{"IRON",	PIXPACK(0x707070),	0.0f,	0.00f * CFDS,	0.90f,  0.00f,  0.0f,	0.0f,	0.00f,  0.000f	* CFDS, 0,	0,		0,	1,	50,	1,	100,	SC_CRACKER2,	R_TEMP+0.0f +273.15f,	251,	"Rusts with salt, can be used for electrolysis of WATR", ST_SOLID, TYPE_SOLID|PROP_CONDUCTS, &update_IRON},
+	{"IRON",	PIXPACK(0x707070),	0.0f,	0.00f * CFDS,	0.90f,  0.00f,  0.0f,	0.0f,	0.00f,  0.000f	* CFDS, 0,	0,		0,	1,	50,	1,	100,	SC_SOLIDS,		R_TEMP+0.0f +273.15f,	251,	"Rusts with salt, can be used for electrolysis of WATR", ST_SOLID, TYPE_SOLID|PROP_CONDUCTS, &update_IRON},
 	{"MORT",	PIXPACK(0xE0E0E0),	0.0f,	0.00f * CFDS,	1.00f,	1.00f,	-0.99f,	0.0f,	0.01f,	0.002f	* CFDS,	0,	0,		0,	0,	0,	1,	-1,		SC_CRACKER2,	R_TEMP+4.0f	+273.15f,	60,		"Steam Train.", ST_NONE, TYPE_PART, &update_MORT},
 	{"GOL",		PIXPACK(0x0CAC00),	0.0f,	0.00f * CFDS,	0.90f,	0.00f,	0.0f,	0.0f,	0.00f,	0.000f	* CFDS,	0,	0,		0,	0,	0,	1,	100,	SC_LIFE,		9000.0f,				40,		"Game Of Life! B3/S23", ST_NONE, TYPE_SOLID|PROP_LIFE, NULL},
 	{"HLIF",	PIXPACK(0xFF0000),	0.0f,	0.00f * CFDS,	0.90f,	0.00f,	0.0f,	0.0f,	0.00f,	0.000f	* CFDS,	0,	0,		0,	0,	0,	1,	100,	SC_LIFE,		9000.0f,				40,		"High Life! B36/S23", ST_NONE, TYPE_SOLID|PROP_LIFE, NULL},
@@ -686,7 +686,7 @@ static part_transition ptransitions[PT_NUM] =
 	/* GOL  */ {IPL,	NT,			IPH,	NT,			ITL,	NT,			ITH,	NT},
 	/* GOL  */ {IPL,	NT,			IPH,	NT,			ITL,	NT,			ITH,	NT},
 	/* WIND */ {IPL,	NT,			IPH,	NT,			ITL,	NT,			ITH,	NT},
-	/* H2   */ {IPL,	NT,			IPH,	NT,			ITL,	NT,			ITH,	NT}, 
+	/* H2   */ {IPL,	NT,			IPH,	NT,			ITL,	NT,			ITH,	NT},
 };
 #undef IPL
 #undef IPH
@@ -814,49 +814,25 @@ static void create_gain_photon(int pp);
 
 void kill_part(int i);
 
-#if defined(WIN32) && !defined(__GNUC__)
-extern _inline void part_change_type(int i, int x, int y, int t);
-#else
-extern inline void part_change_type(int i, int x, int y, int t);
-#endif
+void part_change_type(int i, int x, int y, int t);
 
-#if defined(WIN32) && !defined(__GNUC__)
-extern _inline int create_part(int p, int x, int y, int t);
-#else
-extern inline int create_part(int p, int x, int y, int t);
-#endif
+int create_part(int p, int x, int y, int t);
 
-#if defined(WIN32) && !defined(__GNUC__)
-extern _inline void delete_part(int x, int y);
-#else
-extern inline void delete_part(int x, int y);
-#endif
+void delete_part(int x, int y);
 
-#if defined(WIN32) && !defined(__GNUC__)
-extern _inline int is_wire(int x, int y);
-#else
-extern inline int is_wire(int x, int y);
-#endif
+int is_wire(int x, int y);
 
-#if defined(WIN32) && !defined(__GNUC__)
-extern _inline int is_wire_off(int x, int y);
-#else
-extern inline int is_wire_off(int x, int y);
-#endif
+int is_wire_off(int x, int y);
 
 void set_emap(int x, int y);
 
-#if defined(WIN32) && !defined(__GNUC__)
-extern _inline int parts_avg(int ci, int ni, int t);
-#else
-extern int parts_avg(int ci, int ni, int t);
-#endif
+int parts_avg(int ci, int ni, int t);
 
 int nearest_part(int ci, int t);
 
-void update_particles_i(pixel *vid, int start, int inc);
+void update_particles_i(int start, int inc);
 
-void update_particles(pixel *vid);
+void update_particles();
 
 void rotate_area(int area_x, int area_y, int area_w, int area_h, int invert);
 
@@ -869,20 +845,11 @@ int flood_parts(int x, int y, int c, int cm, int bm);
 int create_parts(int x, int y, int rx, int ry, int c);
 
 void create_line(int x1, int y1, int x2, int y2, int rx, int ry, int c);
+
 void *transform_save(void *odata, int *size, matrix2d transform, vector2d translate);
 
+void orbitalparts_get(int block1, int block2, int resblock1[], int resblock2[]);
 
-#if defined(WIN32) && !defined(__GNUC__)
-extern _inline void orbitalparts_get(int block1, int block2, int resblock1[], int resblock2[]);
-#else
-extern inline void orbitalparts_get(int block1, int block2, int resblock1[], int resblock2[]);
-#endif
-
-
-#if defined(WIN32) && !defined(__GNUC__)
-extern _inline void orbitalparts_set(int *block1, int *block2, int resblock1[], int resblock2[]);
-#else
-extern inline void orbitalparts_set(int *block1, int *block2, int resblock1[], int resblock2[]);
-#endif
+void orbitalparts_set(int *block1, int *block2, int resblock1[], int resblock2[]);
 
 #endif
