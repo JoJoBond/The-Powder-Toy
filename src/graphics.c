@@ -3072,34 +3072,35 @@ void Graphics_RenderCursor(int x, int y, int t, int rx, int ry)
 	int i,j,c;
 	if (t<PT_NUM||t==SPC_AIR||t==SPC_HEAT||t==SPC_COOL||t==SPC_VACUUM)
 	{
-		if (rx<=0)
-			Renderer_XORPixel(x, y);
-		else if (ry<=0)
-			Renderer_XORPixel(x, y);
 		if (rx+ry<=0)
 			Renderer_XORPixel(x, y);
-		else if (CURRENT_BRUSH==SQUARE_BRUSH)
+		else
 		{
-			for (j=0; j<=ry; j++)
-				for (i=0; i<=rx; i++)
-					if (i*j<=ry*rx && ((i+1)>rx || (j+1)>ry))
-					{
-						Renderer_XORPixel(x+i, y+j);
-						Renderer_XORPixel(x-i, y-j);
-						if (i&&j)Renderer_XORPixel(x+i, y-j);
-						if (i&&j)Renderer_XORPixel(x-i, y+j);
-					}
+			if (rx<=0 || ry<=0)
+				Renderer_XORPixel(x, y);
+			if (CURRENT_BRUSH==SQUARE_BRUSH)
+			{
+				for (j=0; j<=ry; j++)
+					for (i=0; i<=rx; i++)
+						if (i*j<=ry*rx && ((i+1)>rx || (j+1)>ry))
+						{
+							Renderer_XORPixel(x+i, y+j);
+							Renderer_XORPixel(x-i, y-j);
+							if (i&&j)Renderer_XORPixel(x+i, y-j);
+							if (i&&j)Renderer_XORPixel(x-i, y+j);
+						}
+			}
+			else if (CURRENT_BRUSH==CIRCLE_BRUSH)
+				for (j=0; j<=ry; j++)
+					for (i=0; i<=rx; i++)
+						if ((pow(i,2))/(pow(rx,2))+(pow(j,2))/(pow(ry,2))<=1 && ((pow(i+1,2))/(pow(rx,2))+(pow(j,2))/(pow(ry,2))>1 || (pow(i,2))/(pow(rx,2))+(pow(j+1,2))/(pow(ry,2))>1))
+						{
+							Renderer_XORPixel(x+i, y+j);
+							if (j) Renderer_XORPixel(x+i, y-j);
+							if (i) Renderer_XORPixel(x-i, y+j);
+							if (i&&j) Renderer_XORPixel(x-i, y-j);
+						}
 		}
-		else if (CURRENT_BRUSH==CIRCLE_BRUSH)
-			for (j=0; j<=ry; j++)
-				for (i=0; i<=rx; i++)
-					if ((pow(i,2))/(pow(rx,2))+(pow(j,2))/(pow(ry,2))<=1 && ((pow(i+1,2))/(pow(rx,2))+(pow(j,2))/(pow(ry,2))>1 || (pow(i,2))/(pow(rx,2))+(pow(j+1,2))/(pow(ry,2))>1))
-					{
-						Renderer_XORPixel(x+i, y+j);
-						if (j) Renderer_XORPixel(x+i, y-j);
-						if (i) Renderer_XORPixel(x-i, y+j);
-						if (i&&j) Renderer_XORPixel(x-i, y-j);
-					}
 	}
 	else //wall cursor
 	{
