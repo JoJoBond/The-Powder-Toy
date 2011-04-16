@@ -3384,7 +3384,7 @@ _INLINE_ void Graphics_RenderWallsNormal()
 		for (x=0; x<XRES/CELL; x++)
 		{
 			if (bmap[y][x]==WL_WALL)
-				Renderer_FillRectangle(x*CELL,y*CELL,CELL,CELL,0x80,0x80,0x80,0xFF);
+				Renderer_FillRectangle(x*CELL-1,y*CELL-1,CELL+1,CELL+1,0x80,0x80,0x80,0xFF);
 			else if (bmap[y][x]==WL_DESTROYALL)
 				for (j=0; j<CELL; j+=2)
 					for (i=(j>>1)&1; i<CELL; i+=2)
