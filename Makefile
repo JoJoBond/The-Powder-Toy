@@ -10,11 +10,13 @@ PYCOMMAND := $(PY_BIN) getheader.py
 CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200112L -Iincludes/ 
 OFLAGS := -O3 -ffast-math -ftree-vectorize -funsafe-math-optimizations
 LFLAGS := -lSDL -lm -lbz2 -lutil -lpython$(PY_VERSION) -L$(PY_LIBPATH) -I$(PY_INCPATH) $(PY_LDFLAGS)
+LFLAGS_WIN := -lSDL -lm -lbz2 -lpython$(PY_VERSION) -L$(PY_LIBPATH) -I$(PY_INCPATH) $(PY_LDFLAGS)
 LFLAGS_X := -lm -lbz2 -lSDLmain -I/Library/Frameworks/Python.framework/Versions/$(PY_VERSION)/include/python$(PY_VERSION)
 MFLAGS_SSE3 := -march=native -DX86 -DX86_SSE3 -msse3 -mmmx
 MFLAGS_SSE2 := -march=native -DX86 -DX86_SSE2 -msse2 -mmmx
 MFLAGS_SSE := -march=native -DX86 -DX86_SSE -mmmx
-OGLFLAGS := -lGL -lGLU -DOpenGL
+OGLFLAGS_LNX := -lGL -lGLU -DOpenGL
+OGLFLAGS_WIN := -lopengl32 -lglu32 -DOpenGL
 FLAGS_DBUG := -Wall -std=c99 -D_POSIX_C_SOURCE=200112L -pg -DX86 -DX86_SSE3 -msse3 -g -Wno-unused-result
 COMPILER := gcc
 LINUX_TARG := powder-64-sse2 powder-sse powder-sse2
@@ -42,12 +44,12 @@ powder-debug-64: $(SOURCES)
 	mv $@ build
 powder-debug: $(SOURCES)
 	$(PYCOMMAND)
-	$(COMPILER) -DINTERNAL -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE3) $(SOURCES) $(LFLAGS) $(OGLFLAGS) -DLIN64 $(FLAGS_DBUG)
+	$(COMPILER) -DINTERNAL -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE3) $(SOURCES) $(LFLAGS) $(OGLFLAGS_LNX) -DLIN64 $(FLAGS_DBUG)
 	mv $@ build
 
 powder-sse3: $(SOURCES)
 	$(PYCOMMAND)
-	$(COMPILER) -m32 -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE3) $(SOURCES) $(LFLAGS) $(OGLFLAGS) -DLIN32 -Wno-unused-result
+	$(COMPILER) -m32 -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE3) $(SOURCES) $(LFLAGS) $(OGLFLAGS_LNX) -DLIN32 -Wno-unused-result
 	strip $@
 	mv $@ build
 powder-sse2: $(SOURCES)
@@ -80,24 +82,24 @@ powder-64-sse2: $(SOURCES)
 powder-icc: $(SOURCES)
 	/opt/intel/Compiler/11.1/073/bin/intel64/icc -m64 -o$@ -Iincludes/ -O2 -march=core2 -msse3 -mfpmath=sse -lSDL -lbz2 -lm -xW $(SOURCES) -std=c99 -D_POSIX_C_SOURCE=200112L
 
-powder-res.o: powder-res.rc powder.ico
-	i586-mingw32msvc-windres powder-res.rc powder-res.o
+powder-res.o: src/Resources/powder-res.rc src/Resources/powder.ico
+	i586-mingw32msvc-windres src/Resources/powder-res.rc powder-res.o
 powder-sse3.exe: $(SOURCES) powder-res.o
 	$(PYCOMMAND)
-	i586-mingw32msvc-gcc -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE3) $(SOURCES) powder-res.o -lmingw32 -llibregex -lws2_32 -lSDLmain $(LFLAGS) -mwindows -DWIN32
-	strip $@
+	i586-mingw32msvc-gcc -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE3) $(SOURCES) powder-res.o -lmingw32 -llibgnurx -lws2_32 -lSDLmain $(LFLAGS_WIN) $(OGLFLAGS_WIN) -mwindows -DWIN32
+	i586-mingw32msvc-strip $@
 	chmod 0644 $@
 	mv $@ build
 powder-sse2.exe: $(SOURCES) powder-res.o
 	$(PYCOMMAND)
-	i586-mingw32msvc-gcc -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE2) $(SOURCES) powder-res.o -lmingw32 -llibregex -lws2_32 -lSDLmain $(LFLAGS) -mwindows -DWIN32
-	strip $@
+	i586-mingw32msvc-gcc -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE2) $(SOURCES) powder-res.o -lmingw32 -llibgnurx -lws2_32 -lSDLmain $(LFLAGS_WIN) $(OGLFLAGS_WIN) -mwindows -DWIN32
+	i586-mingw32msvc-strip $@
 	chmod 0644 $@
 	mv $@ build
 powder-sse.exe: $(SOURCES) powder-res.o
 	$(PYCOMMAND)
-	i586-mingw32msvc-gcc -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE) $(SOURCES) powder-res.o -lmingw32 -llibregex -lws2_32 -lSDLmain $(LFLAGS) -mwindows -DWIN32
-	strip $@
+	i586-mingw32msvc-gcc -o$@ $(CFLAGS) $(OFLAGS) $(MFLAGS_SSE) $(SOURCES) powder-res.o -lmingw32 -llibgnurx -lws2_32 -lSDLmain $(LFLAGS_WIN) $(OGLFLAGS_WIN) -mwindows -DWIN32
+	i586-mingw32msvc-strip $@
 	chmod 0644 $@
 	mv $@ build
 
