@@ -23,6 +23,7 @@
 #include <icon.h>
 
 #define GLOWTEXSIZE 16
+#define FONTTEXSIZE 16
 #define BLOBTEXSIZE 4
 
 #define STATESLOTS 4
@@ -33,6 +34,7 @@ GL_BlendEquation _glBlendEquation = 0;
 SDL_Surface *sdl_scrn;
 GLuint GlowTexture = 0;
 GLuint BlobTexture = 0;
+GLuint FontTexture[255];
 //int sdl_scale = 1;
 unsigned char PersistentTick=0;
 unsigned char *StateMemory;
@@ -132,6 +134,45 @@ void Renderer_Init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	
+	Renderer_InitFont();
+}
+
+void Renderer_InitFont()
+{
+	int h, i, j, w, bn, ba;
+    char *rp;
+	GLubyte FontAlphaTmp[FONTTEXSIZE][FONTTEXSIZE];
+	for(h=0; h<=255; h++)
+	{
+		memset(FontAlphaTmp, 0, FONTTEXSIZE*FONTTEXSIZE);
+		rp = font_data + font_ptrs[h];
+		w = *(rp++);
+		bn = 0;
+		ba = 0;
+		for(j=0; j<FONT_H; j++)
+		{
+			for(i=0; i<w; i++)
+			{
+				if(!bn)
+				{
+					ba = *(rp++);
+					bn = 8;
+				}
+				FontAlphaTmp[j][i] = (ba&3)*85;
+				ba >>= 2;
+				bn -= 2;
+			}
+		}
+		glGenTextures(1, &FontTexture[h]);
+		glBindTexture(GL_TEXTURE_2D, FontTexture[h]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, FONTTEXSIZE, FONTTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &FontAlphaTmp);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glFinish();
+	}
 }
 
 void Renderer_PrepareScreen()
@@ -295,10 +336,11 @@ _INLINE_ void Renderer_ClearRectangle(int x, int y, int w, int h)
 
 _INLINE_ int Renderer_DrawChar(int x, int y, int c, int r, int g, int b, int a)
 {
-    int i, j, w, bn = 0, ba = 0;
+    //int i, j, w, bn = 0, ba = 0;
     char *rp = font_data + font_ptrs[c];
-    w = *(rp++);
-    glBegin(GL_POINTS);
+    int w = *(rp++);
+	
+    /*glBegin(GL_POINTS);
     for(j=0; j<FONT_H; j++)
         for(i=0; i<w; i++)
         {
@@ -312,7 +354,22 @@ _INLINE_ int Renderer_DrawChar(int x, int y, int c, int r, int g, int b, int a)
             ba >>= 2;
             bn -= 2;
         }
-    glEnd();
+    glEnd();*/
+	
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, FontTexture[c]);
+    glBegin(GL_QUADS);
+	glColor4ub(r, g, b, a);
+	glTexCoord2i(0,0);
+	glVertex2i(x, y-1);
+	glTexCoord2i(1,0);
+	glVertex2i(x+FONTTEXSIZE, y-1);
+	glTexCoord2i(1,1);
+	glVertex2i(x+FONTTEXSIZE, y+FONTTEXSIZE-1);
+	glTexCoord2i(0,1);
+	glVertex2i(x, y+FONTTEXSIZE-1);
+	glEnd();
+    glDisable(GL_TEXTURE_2D);
     return x + w;
 }
 
