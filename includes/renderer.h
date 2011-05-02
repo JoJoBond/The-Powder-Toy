@@ -32,7 +32,9 @@ _EXTERN_ _INLINE_ void Renderer_BlendPixel(int x, int y, int r, int g, int b, in
 
 _EXTERN_ _INLINE_ void Renderer_AddPixel(int x, int y, int r, int g, int b, int a);
 
-void Renderer_DrawBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb);
+_EXTERN_ _INLINE_ void Renderer_DrawWallBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb);
+
+_EXTERN_ _INLINE_ void Renderer_DrawPartBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb);
 
 void Renderer_DrawDots(int x, int y, int h, int r, int g, int b, int a);
 

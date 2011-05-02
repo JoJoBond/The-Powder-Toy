@@ -22,6 +22,7 @@
 #include <misc.h>
 #include <icon.h>
 
+#define ZOOMTEXSIZE 64
 #define GLOWTEXSIZE 16
 #define FONTTEXSIZE 16
 #define BLOBTEXSIZE 4
@@ -33,7 +34,9 @@ GL_BlendEquation _glBlendEquation = 0;
 
 SDL_Surface *sdl_scrn;
 GLuint GlowTexture = 0;
-GLuint BlobTexture = 0;
+GLuint ZoomTexture = 0;
+GLuint PartBlobTexture = 0;
+GLuint WallBlobTexture = 0;
 GLuint FontTexture[255];
 //int sdl_scale = 1;
 unsigned char PersistentTick=0;
@@ -64,10 +67,16 @@ void Renderer_Init()
             GlowAlphaTmp[i] = (y<(3*CELL-1) && x<(3*CELL+1)) ? fire_alpha[y][x] : 0;
             i--;
         }
-    unsigned char BlobAlphaTmp[] = {
+    unsigned char WallBlobAlphaTmp[] = {
      64, 112,  64,   0,
     112, 255, 112,   0,
      64, 112,  64,   0,
+      0,   0,   0,   0
+    };
+	unsigned char PartBlobAlphaTmp[] = {
+    112, 223, 112,   0,
+    223,   0, 223,   0,
+    112, 223, 112,   0,
       0,   0,   0,   0
     };
     if(SDL_Init(SDL_INIT_VIDEO)<0)
@@ -119,9 +128,17 @@ void Renderer_Init()
     glRasterPos2i(0,YRES-2);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     
-    glGenTextures(1, &BlobTexture);
-    glBindTexture(GL_TEXTURE_2D, BlobTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, BLOBTEXSIZE, BLOBTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &BlobAlphaTmp);
+    glGenTextures(1, &WallBlobTexture);
+    glBindTexture(GL_TEXTURE_2D, WallBlobTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, BLOBTEXSIZE, BLOBTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &WallBlobAlphaTmp);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	
+	glGenTextures(1, &PartBlobTexture);
+    glBindTexture(GL_TEXTURE_2D, PartBlobTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, BLOBTEXSIZE, BLOBTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &PartBlobAlphaTmp);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -135,6 +152,14 @@ void Renderer_Init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	
+	glGenTextures(1, &ZoomTexture);
+	glBindTexture(GL_TEXTURE_2D, ZoomTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ZOOMTEXSIZE, ZOOMTEXSIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
 	Renderer_InitFont();
 }
 
@@ -151,7 +176,6 @@ void Renderer_InitFont()
 		bn = 0;
 		ba = 0;
 		for(j=0; j<FONT_H; j++)
-		{
 			for(i=0; i<w; i++)
 			{
 				if(!bn)
@@ -163,10 +187,9 @@ void Renderer_InitFont()
 				ba >>= 2;
 				bn -= 2;
 			}
-		}
 		glGenTextures(1, &FontTexture[h]);
 		glBindTexture(GL_TEXTURE_2D, FontTexture[h]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, FONTTEXSIZE, FONTTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &FontAlphaTmp);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA4, FONTTEXSIZE, FONTTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &FontAlphaTmp);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -177,7 +200,7 @@ void Renderer_InitFont()
 
 void Renderer_PrepareScreen()
 {
-    if(cmode==2)
+    if(cmode==CM_PERS)
     {
         glRasterPos2i(0,YRES-1);
         if(!PersistentTick)
@@ -263,10 +286,28 @@ _INLINE_ void Renderer_AddPixel(int x, int y, int r, int g, int b, int a)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void Renderer_DrawBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
+_INLINE_ void Renderer_DrawWallBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
 {
     glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, BlobTexture);
+    glBindTexture(GL_TEXTURE_2D, WallBlobTexture);
+    glBegin(GL_QUADS);
+    glColor3ub(cr, cg, cb);
+    glTexCoord2i(1,0);
+    glVertex2i(x-2, y-2);
+    glTexCoord2i(0,0);
+    glVertex2i(x+BLOBTEXSIZE-2, y-2);
+    glTexCoord2i(0,1);
+    glVertex2i(x+BLOBTEXSIZE-2, y+BLOBTEXSIZE-2);
+    glTexCoord2i(1,1);
+    glVertex2i(x-2, y+BLOBTEXSIZE-2);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+}
+
+_INLINE_ void Renderer_DrawPartBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
+{
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, PartBlobTexture);
     glBegin(GL_QUADS);
     glColor3ub(cr, cg, cb);
     glTexCoord2i(1,0);
@@ -336,26 +377,7 @@ _INLINE_ void Renderer_ClearRectangle(int x, int y, int w, int h)
 
 _INLINE_ int Renderer_DrawChar(int x, int y, int c, int r, int g, int b, int a)
 {
-    //int i, j, w, bn = 0, ba = 0;
-    char *rp = font_data + font_ptrs[c];
-    int w = *(rp++);
-	
-    /*glBegin(GL_POINTS);
-    for(j=0; j<FONT_H; j++)
-        for(i=0; i<w; i++)
-        {
-            if(!bn)
-            {
-                ba = *(rp++);
-                bn = 8;
-            }
-            glColor4ub(r, g, b, ((ba&3)*a)/3);
-            glVertex2i(x+i, y+j);
-            ba >>= 2;
-            bn -= 2;
-        }
-    glEnd();*/
-	
+    char *w = font_data + font_ptrs[c];
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, FontTexture[c]);
     glBegin(GL_QUADS);
@@ -370,7 +392,7 @@ _INLINE_ int Renderer_DrawChar(int x, int y, int c, int r, int g, int b, int a)
 	glVertex2i(x, y+FONTTEXSIZE-1);
 	glEnd();
     glDisable(GL_TEXTURE_2D);
-    return x + w;
+    return x + *w;
 }
 
 _INLINE_ void Renderer_XORPixel(int x, int y)
@@ -452,10 +474,24 @@ _INLINE_ void Renderer_XORRectangle(int x, int y, int w, int h)
 
 void Renderer_DrawZoom()
 {
-    Renderer_DrawRectangle(zoom_wx-2, zoom_wy-2, ZSIZE*ZFACTOR+2, ZSIZE*ZFACTOR+2, 192, 192, 192, 255);
-    Renderer_DrawRectangle(zoom_wx-1, zoom_wy-1, ZSIZE*ZFACTOR, ZSIZE*ZFACTOR, 0, 0, 0, 255);
-    Renderer_ClearRectangle(zoom_wx-2, zoom_wy-2, ZSIZE*ZFACTOR+2, ZSIZE*ZFACTOR+2);
-    int i, j=0, x, y;
+    GLfloat TextureFactor = (GLfloat)ZSIZE/64.0f;
+	int j, ZDIM;
+	ZDIM = ZSIZE*ZFACTOR;
+	Renderer_DrawRectangle(zoom_wx-2, zoom_wy-2, ZDIM + 2, ZDIM + 2, 192, 192, 192, 255);
+    Renderer_ClearRectangle(zoom_wx-2, zoom_wy-2, ZDIM + 2, ZDIM + 2);
+    
+	
+	
+	// For some reason this (glCopyPixels) is slow...
+	/*
+	glRasterPos2i(zoom_wx, ZSIZE*ZFACTOR);
+	glPixelZoom(ZFACTOR, ZFACTOR);
+	glCopyPixels(zoom_x, (YRES+MENUSIZE)-zoom_y-ZSIZE, ZSIZE, ZSIZE, GL_COLOR);
+	*/
+	
+	// This is slightly faster then glCopyPixels
+	/*
+	int i, j=0, x, y;
     unsigned char Pixels[(ZSIZE)*(ZSIZE)*4];
     glReadPixels(zoom_x, (YRES+MENUSIZE)-ZSIZE-zoom_y, ZSIZE, ZSIZE, GL_RGBA, GL_UNSIGNED_BYTE, &Pixels);
     glBegin(GL_QUADS);
@@ -471,6 +507,26 @@ void Renderer_DrawZoom()
         j++;
     }
     glEnd();
+	*/
+	
+	
+    glBindTexture(GL_TEXTURE_2D,ZoomTexture);
+	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, zoom_x, YRES + MENUSIZE - ZSIZE - zoom_y, ZOOMTEXSIZE, ZOOMTEXSIZE);
+
+	glEnable(GL_TEXTURE_2D);
+    glBegin(GL_QUADS);
+	glColor3ub(255, 255, 255);
+    glTexCoord2f(0.0f, TextureFactor);
+    glVertex2i(zoom_wx, zoom_wy - 1);
+    glTexCoord2f(TextureFactor, TextureFactor);
+    glVertex2i(zoom_wx + ZDIM , zoom_wy - 1);
+    glTexCoord2f(TextureFactor, 0.0f);
+    glVertex2i(zoom_wx + ZDIM , zoom_wy - 1 + ZDIM);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2i(zoom_wx, zoom_wy - 1 + ZDIM);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+	
     if(zoom_en)
     {
         for(j=-1; j<=ZSIZE; j++)

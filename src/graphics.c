@@ -1200,7 +1200,7 @@ void Graphics_RenderParticles()
 					Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 				}
 				else if (cmode==CM_FANCY && //all fancy mode effects go here, this is a list of exceptions to skip
-				         t!=PT_FIRE && t!=PT_PLSM &&	t!=PT_WTRV &&
+				         t!=PT_FIRE && t!=PT_PLSM && t!=PT_WTRV &&
 				         t!=PT_HFLM && t!=PT_SPRK && t!=PT_FIRW &&
 				         t!=PT_DUST && t!=PT_FIRW && t!=PT_FWRK &&
 				         t!=PT_NEUT && t!=PT_LAVA && t!=PT_BOMB &&
@@ -2242,7 +2242,8 @@ void Graphics_RenderParticles()
 						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
 						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}
-				} else if (t==PT_HFLM)
+				}
+				else if (t==PT_HFLM)
 				{
 					float ttemp = (float)parts[i].life;
 					int caddress = restrict_flt(restrict_flt(ttemp, 0.0f, 200.0f)*3, 0.0f, (200.0f*3)-3);
@@ -2281,7 +2282,8 @@ void Graphics_RenderParticles()
 						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 32);
 						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 32);
 					}
-				} else if (t==PT_FIRW&&parts[i].tmp>=3)
+				}
+				else if (t==PT_FIRW && parts[i].tmp>=3)
 				{
 					float ttemp = (float)parts[i].tmp-4;
 					int caddress = restrict_flt(restrict_flt(ttemp, 0.0f, 200.0f)*3, 0.0f, (200.0f*3)-3);
@@ -2611,7 +2613,8 @@ void Graphics_RenderParticles()
 			//blob view!
 			if (cmode == CM_BLOB&&t!=PT_FIRE&&t!=PT_PLSM&&t!=PT_HFLM&&t!=PT_NONE&&t!=PT_ACID&&t!=PT_LCRY&&t!=PT_GLOW&&t!=PT_SWCH&&t!=PT_SMKE&&t!=PT_WTRV&&!(t==PT_FIRW&&parts[i].tmp==3))
 			{
-				if (t==PT_PHOT) {
+				if (t==PT_PHOT)
+				{
 					cg = 0;
 					cb = 0;
 					cr = 0;
@@ -2628,16 +2631,21 @@ void Graphics_RenderParticles()
 					cr = cr>255?255:cr;
 					cg = cg>255?255:cg;
 					cb = cb>255?255:cb;
-				} else {
+				}
+				else
+				{
 					cr = PIXR(ptypes[t].pcolors);
 					cg = PIXG(ptypes[t].pcolors);
 					cb = PIXB(ptypes[t].pcolors);
 				}
-
+				
+				Renderer_DrawPartBlob(nx, ny, cr, cg, cb);
+				
 				//if(vid[(ny-1)*YRES+(nx-1)]!=0){
 				//	Renderer_BlendPixel(nx, ny-1, R, G, B, 46);
 				//}
-
+				
+				/*
 				Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 223);
 				Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 223);
 				Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 223);
@@ -2647,6 +2655,7 @@ void Graphics_RenderParticles()
 				Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 112);
 				Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 112);
 				Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 112);
+				*/
 			}
 		}
 	}
@@ -3180,17 +3189,17 @@ _INLINE_ void Graphics_RenderWallsBlob()
 			if (bmap[y][x]==WL_WALL)
 				for (j=0; j<CELL; j++)
 					for (i=0; i<CELL; i++)
-						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+						Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
 			else if (bmap[y][x]==WL_DESTROYALL)
 				for (j=0; j<CELL; j+=2)
 					for (i=(j>>1)&1; i<CELL; i+=2)
-						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+						Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
 			else if (bmap[y][x]==WL_ALLOWLIQUID)
 			{
 				for (j=0; j<CELL; j++)
 					for (i=0; i<CELL; i++)
 						if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
-							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0xC0, 0xC0, 0xC0);
+							Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0xC0, 0xC0, 0xC0);
 				if (emap[y][x])
 				{
 					cr = cg = cb = 16;
@@ -3208,12 +3217,12 @@ _INLINE_ void Graphics_RenderWallsBlob()
 			else if (bmap[y][x]==WL_FAN)
 				for (j=0; j<CELL; j+=2)
 					for (i=(j>>1)&1; i<CELL; i+=2)
-						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0xFF);
+						Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0xFF);
 			else if (bmap[y][x]==WL_DETECT)
 			{
 				for (j=0; j<CELL; j+=2)
 					for (i=(j>>1)&1; i<CELL; i+=2)
-						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0xFF, 0x80, 0x80);
+						Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0xFF, 0x80, 0x80);
 				if (emap[y][x])
 				{
 					cr = 255;
@@ -3247,7 +3256,7 @@ _INLINE_ void Graphics_RenderWallsBlob()
 					for (j=0; j<CELL; j++)
 						for (i=0; i<CELL; i++)
 							if (i&j&1)
-								Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+								Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
 				}
 				else
 				{
@@ -3257,7 +3266,7 @@ _INLINE_ void Graphics_RenderWallsBlob()
 					for (j=0; j<CELL; j++)
 						for (i=0; i<CELL; i++)
 							if (!(i&j&1))
-								Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+								Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
 				}
 			}
 			else if (bmap[y][x]==WL_WALLELEC)
@@ -3267,9 +3276,9 @@ _INLINE_ void Graphics_RenderWallsBlob()
 					{
 						pmap[y*CELL+j][x*CELL+i] = 0x7FFFFFFF;
 						if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
-							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0xC0, 0xC0, 0xC0);
+							Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0xC0, 0xC0, 0xC0);
 						else
-							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+							Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
 					}
 				if (emap[y][x])
 				{
@@ -3292,7 +3301,7 @@ _INLINE_ void Graphics_RenderWallsBlob()
 					{
 						//pmap[y*CELL+j][x*CELL+i] = 0x7FFFFFFF;
 						if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
-							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0xFF, 0xFF, 0x22);
+							Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0xFF, 0xFF, 0x22);
 					}
 				if (emap[y][x])
 				{
@@ -3311,22 +3320,22 @@ _INLINE_ void Graphics_RenderWallsBlob()
 			else if (bmap[y][x]==WL_ALLOWGAS)
 				for (j=0; j<CELL; j+=2)
 					for (i=(j>>1)&1; i<CELL; i+=2)
-						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x57, 0x97, 0x77);
+						Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x57, 0x97, 0x77);
 			else if (bmap[y][x]==WL_ALLOWAIR)
 				for (j=0; j<CELL; j+=2)
 					for (i=(j>>1)&1; i<CELL; i+=2)
-						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x3C, 0x3C, 0x3C);
+						Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x3C, 0x3C, 0x3C);
 			else if (bmap[y][x]==WL_ALLOWSOLID)
 				for (j=0; j<CELL; j+=2)
 					for (i=(j>>1)&1; i<CELL; i+=2)
-						Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x57, 0x57, 0x57);
+						Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x57, 0x57, 0x57);
 			else if (bmap[y][x]==WL_EHOLE)
 			{
 				if (emap[y][x])
 				{
 					for (j=0; j<CELL; j++)
 						for (i=(j)&1; i<CELL; i++)
-							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x24, 0x24, 0x24);
+							Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x24, 0x24, 0x24);
 					for (j=0; j<CELL; j+=2)
 						for (i=(j)&1; i<CELL; i+=2)
 							Renderer_DrawPixel((x*CELL+i),(y*CELL+j),PIXPACK(0x000000));
@@ -3334,7 +3343,7 @@ _INLINE_ void Graphics_RenderWallsBlob()
 				else
 					for (j=0; j<CELL; j+=2)
 						for (i=(j)&1; i<CELL; i+=2)
-							Renderer_DrawBlob((x*CELL+i), (y*CELL+j), 0x24, 0x24, 0x24);
+							Renderer_DrawWallBlob((x*CELL+i), (y*CELL+j), 0x24, 0x24, 0x24);
 				if (emap[y][x])
 				{
 					cr = cg = cb = 16;
