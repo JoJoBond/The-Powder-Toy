@@ -2128,6 +2128,9 @@ void Graphics_RenderParticles()
 						fire_r[y][x] = fr;
 					}
 					if (cmode == CM_BLOB) {
+					
+						Renderer_DrawPartBlob(nx, ny, cr, cg, cb);
+						/*
 						Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 223);
 						Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 223);
 						Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 223);
@@ -2137,6 +2140,7 @@ void Graphics_RenderParticles()
 						Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, 112);
 						Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, 112);
 						Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, 112);
+						*/
 					}
 				}
 				else if (t==PT_LCRY)

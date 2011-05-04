@@ -22,6 +22,7 @@
 #include <misc.h>
 #include <icon.h>
 
+#define SCRNTEXSIZE 512
 #define ZOOMTEXSIZE 64
 #define GLOWTEXSIZE 16
 #define FONTTEXSIZE 16
@@ -37,16 +38,15 @@ GLuint GlowTexture = 0;
 GLuint ZoomTexture = 0;
 GLuint PartBlobTexture = 0;
 GLuint WallBlobTexture = 0;
+GLuint ScreenTexture[1];
 GLuint FontTexture[255];
 //int sdl_scale = 1;
 unsigned char PersistentTick=0;
 unsigned char *StateMemory;
-unsigned char *SecondaryBuffer;
 
 void Renderer_Init()
 {
     StateMemory = malloc((XRES+BARSIZE)*(YRES+MENUSIZE)*3*STATESLOTS);
-    SecondaryBuffer = malloc((XRES+BARSIZE)*(YRES+MENUSIZE)*3);
     int x,y,i,j;
     float temp[CELL*3][CELL*3];
     memset(temp, 0, sizeof(temp));
@@ -98,7 +98,7 @@ void Renderer_Init()
         exit(1);
     }
     SDL_WM_SetCaption("The Powder Toy", "Powder Toy");
-        #ifdef WIN32
+    #ifdef WIN32
         //SDL_Surface *icon = SDL_CreateRGBSurfaceFrom(app_icon_w32, 32, 32, 32, 128, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
         //SDL_WM_SetIcon(icon, NULL/*app_icon_mask*/);
     #else
@@ -128,6 +128,28 @@ void Renderer_Init()
     glRasterPos2i(0,YRES-2);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     
+	#define TextureInit(Size, Type, Store, Data) \
+	glGenTextures(1, &Store); \
+    glBindTexture(GL_TEXTURE_2D, Store); \
+    glTexImage2D(GL_TEXTURE_2D, 0, Type, Size, Size, 0, Type, GL_UNSIGNED_BYTE, Data); \
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); \
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); \
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP); \
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP); \
+	
+	TextureInit(BLOBTEXSIZE, GL_ALPHA, WallBlobTexture, &WallBlobAlphaTmp);
+	
+	TextureInit(BLOBTEXSIZE, GL_ALPHA, PartBlobTexture, &PartBlobAlphaTmp);
+	
+	TextureInit(GLOWTEXSIZE, GL_ALPHA, GlowTexture, &GlowAlphaTmp);
+	
+	TextureInit(ZOOMTEXSIZE, GL_RGB, ZoomTexture, 0);
+	
+	TextureInit(SCRNTEXSIZE, GL_RGB, ScreenTexture[0], 0);
+	
+	TextureInit(SCRNTEXSIZE, GL_RGB, ScreenTexture[1], 0);
+	
+	/*
     glGenTextures(1, &WallBlobTexture);
     glBindTexture(GL_TEXTURE_2D, WallBlobTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, BLOBTEXSIZE, BLOBTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &WallBlobAlphaTmp);
@@ -154,12 +176,29 @@ void Renderer_Init()
 	
 	glGenTextures(1, &ZoomTexture);
 	glBindTexture(GL_TEXTURE_2D, ZoomTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ZOOMTEXSIZE, ZOOMTEXSIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ZOOMTEXSIZE, ZOOMTEXSIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	
+	glGenTextures(1, &ScreenTexture[0]);
+	glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCRNTEXSIZE, SCRNTEXSIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
+	glGenTextures(1, &ScreenTexture[1]);
+	glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCRNTEXSIZE, SCRNTEXSIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	*/
+	
 	Renderer_InitFont();
 }
 
@@ -202,17 +241,67 @@ void Renderer_PrepareScreen()
 {
     if(cmode==CM_PERS)
     {
-        glRasterPos2i(0,YRES-1);
         if(!PersistentTick)
         {
-            glDrawPixels(XRES, YRES, GL_RGB, GL_UNSIGNED_BYTE, SecondaryBuffer);
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
+			glBegin(GL_QUADS);
+			glColor3ub(255, 255, 255);
+			glTexCoord2f(0.0f, 1.0f);
+			glVertex2i(0, -1 - SCRNTEXSIZE + YRES);
+			glTexCoord2f(1.0f, 1.0f);
+			glVertex2i(SCRNTEXSIZE , -1 - SCRNTEXSIZE + YRES);
+			glTexCoord2f(1.0f, 0.0f);
+			glVertex2i(SCRNTEXSIZE , - 1 + YRES);
+			glTexCoord2f(0.0f, 0.0f);
+			glVertex2i(0, - 1 + YRES);
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
+			glBegin(GL_QUADS);
+			glColor3ub(255, 255, 255);
+			glTexCoord2f(0.0f, 1.0f);
+			glVertex2i(SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
+			glTexCoord2f(1.0f, 1.0f);
+			glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
+			glTexCoord2f(1.0f, 0.0f);
+			glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, - 1 + YRES);
+			glTexCoord2f(0.0f, 0.0f);
+			glVertex2i(SCRNTEXSIZE, - 1 + YRES);
+			glEnd();
+			glDisable(GL_TEXTURE_2D);
+			
             _glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
             Renderer_FillRectangle(-1,-1,XRES+2,YRES+2,255,255,255,1);
             _glBlendEquation(GL_FUNC_ADD);
         }
         else
         {
-            glDrawPixels(XRES, YRES, GL_RGB, GL_UNSIGNED_BYTE, SecondaryBuffer);
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
+			glBegin(GL_QUADS);
+			glColor3ub(255, 255, 255);
+			glTexCoord2f(0.0f, 1.0f);
+			glVertex2i(0, -1 - SCRNTEXSIZE + YRES);
+			glTexCoord2f(1.0f, 1.0f);
+			glVertex2i(SCRNTEXSIZE , -1 - SCRNTEXSIZE + YRES);
+			glTexCoord2f(1.0f, 0.0f);
+			glVertex2i(SCRNTEXSIZE , - 1 + YRES);
+			glTexCoord2f(0.0f, 0.0f);
+			glVertex2i(0, - 1 + YRES);
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
+			glBegin(GL_QUADS);
+			glColor3ub(255, 255, 255);
+			glTexCoord2f(0.0f, 1.0f);
+			glVertex2i(SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
+			glTexCoord2f(1.0f, 1.0f);
+			glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
+			glTexCoord2f(1.0f, 0.0f);
+			glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, - 1 + YRES);
+			glTexCoord2f(0.0f, 0.0f);
+			glVertex2i(SCRNTEXSIZE, - 1 + YRES);
+			glEnd();
+			glDisable(GL_TEXTURE_2D);
         }
         PersistentTick = (PersistentTick+1) % 3;
         Renderer_ClearRectangle(-1,YRES-11,XRES+2,12);
@@ -225,7 +314,10 @@ void Renderer_PrepareScreen()
 
 void Renderer_ClearSecondaryBuffer()
 {
-    memset(SecondaryBuffer, 0, (XRES+BARSIZE)*(YRES+MENUSIZE)*3);
+	glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCRNTEXSIZE, SCRNTEXSIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCRNTEXSIZE, SCRNTEXSIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 }
 
 void Renderer_Display()
@@ -480,8 +572,6 @@ void Renderer_DrawZoom()
 	Renderer_DrawRectangle(zoom_wx-2, zoom_wy-2, ZDIM + 2, ZDIM + 2, 192, 192, 192, 255);
     Renderer_ClearRectangle(zoom_wx-2, zoom_wy-2, ZDIM + 2, ZDIM + 2);
     
-	
-	
 	// For some reason this (glCopyPixels) is slow...
 	/*
 	glRasterPos2i(zoom_wx, ZSIZE*ZFACTOR);
@@ -508,7 +598,6 @@ void Renderer_DrawZoom()
     }
     glEnd();
 	*/
-	
 	
     glBindTexture(GL_TEXTURE_2D,ZoomTexture);
 	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, zoom_x, YRES + MENUSIZE - ZSIZE - zoom_y, ZOOMTEXSIZE, ZOOMTEXSIZE);
@@ -544,7 +633,14 @@ void Renderer_DrawZoom()
 
 void Renderer_GrabPersistent()
 {
-    glReadPixels(0, MENUSIZE, XRES, YRES, GL_RGB, GL_UNSIGNED_BYTE, SecondaryBuffer);
+    //glReadPixels(0, MENUSIZE, XRES, YRES, GL_RGB, GL_UNSIGNED_BYTE, SecondaryBuffer);
+	glFinish();
+	
+	glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
+	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, MENUSIZE, SCRNTEXSIZE, SCRNTEXSIZE);
+	
+	glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
+	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, SCRNTEXSIZE, MENUSIZE, SCRNTEXSIZE, SCRNTEXSIZE);
 }
 
 void Renderer_ClearMenu()
