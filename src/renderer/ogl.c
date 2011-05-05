@@ -2,14 +2,14 @@
 #include <SDL/SDL.h>
 
 #ifdef MACOSX
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <OpenGL/glext.h>
-#define APIENTRY
+	#include <OpenGL/gl.h>
+	#include <OpenGL/glu.h>
+	#include <OpenGL/glext.h>
+	#define APIENTRY
 #else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glext.h>
+	#include <GL/gl.h>
+	#include <GL/glu.h>
+	#include <GL/glext.h>
 #endif
 
 #include <defines.h>
@@ -40,6 +40,8 @@ GLuint PartBlobTexture = 0;
 GLuint WallBlobTexture = 0;
 GLuint ScreenTexture[1];
 GLuint FontTexture[255];
+GLuint GlowList = 0;
+
 //int sdl_scale = 1;
 unsigned char PersistentTick=0;
 unsigned char *StateMemory;
@@ -200,6 +202,22 @@ void Renderer_Init()
 	*/
 	
 	Renderer_InitFont();
+	
+	GlowList = glGenLists(1);
+	glNewList(GlowList,GL_COMPILE);
+	
+	glBegin(GL_QUADS);
+	glTexCoord2i(1,0);
+	glVertex2i(-3, -4);
+	glTexCoord2i(0,0);
+	glVertex2i(GLOWTEXSIZE-3, -4);
+	glTexCoord2i(0,1);
+	glVertex2i(GLOWTEXSIZE-3, GLOWTEXSIZE-4);
+	glTexCoord2i(1,1);
+	glVertex2i(-3, GLOWTEXSIZE-4);
+	glEnd();
+	
+	glEndList();
 }
 
 void Renderer_InitFont()
@@ -241,67 +259,37 @@ void Renderer_PrepareScreen()
 {
     if(cmode==CM_PERS)
     {
-        if(!PersistentTick)
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
+		glBegin(GL_QUADS);
+		glColor3ub(255, 255, 255);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex2i(0, -1 - SCRNTEXSIZE + YRES);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex2i(SCRNTEXSIZE , -1 - SCRNTEXSIZE + YRES);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex2i(SCRNTEXSIZE , - 1 + YRES);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex2i(0, - 1 + YRES);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
+		glBegin(GL_QUADS);
+		glColor3ub(255, 255, 255);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex2i(SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, - 1 + YRES);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex2i(SCRNTEXSIZE, - 1 + YRES);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+		if(!PersistentTick)
         {
-			glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
-			glBegin(GL_QUADS);
-			glColor3ub(255, 255, 255);
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex2i(0, -1 - SCRNTEXSIZE + YRES);
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex2i(SCRNTEXSIZE , -1 - SCRNTEXSIZE + YRES);
-			glTexCoord2f(1.0f, 0.0f);
-			glVertex2i(SCRNTEXSIZE , - 1 + YRES);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2i(0, - 1 + YRES);
-			glEnd();
-			glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
-			glBegin(GL_QUADS);
-			glColor3ub(255, 255, 255);
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex2i(SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
-			glTexCoord2f(1.0f, 0.0f);
-			glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, - 1 + YRES);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2i(SCRNTEXSIZE, - 1 + YRES);
-			glEnd();
-			glDisable(GL_TEXTURE_2D);
-			
             _glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
             Renderer_FillRectangle(-1,-1,XRES+2,YRES+2,255,255,255,1);
             _glBlendEquation(GL_FUNC_ADD);
-        }
-        else
-        {
-			glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
-			glBegin(GL_QUADS);
-			glColor3ub(255, 255, 255);
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex2i(0, -1 - SCRNTEXSIZE + YRES);
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex2i(SCRNTEXSIZE , -1 - SCRNTEXSIZE + YRES);
-			glTexCoord2f(1.0f, 0.0f);
-			glVertex2i(SCRNTEXSIZE , - 1 + YRES);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2i(0, - 1 + YRES);
-			glEnd();
-			glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
-			glBegin(GL_QUADS);
-			glColor3ub(255, 255, 255);
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex2i(SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, -1 - SCRNTEXSIZE + YRES);
-			glTexCoord2f(1.0f, 0.0f);
-			glVertex2i(SCRNTEXSIZE + SCRNTEXSIZE, - 1 + YRES);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2i(SCRNTEXSIZE, - 1 + YRES);
-			glEnd();
-			glDisable(GL_TEXTURE_2D);
         }
         PersistentTick = (PersistentTick+1) % 3;
         Renderer_ClearRectangle(-1,YRES-11,XRES+2,12);
@@ -372,7 +360,7 @@ _INLINE_ void Renderer_AddPixel(int x, int y, int r, int g, int b, int a)
 {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 	glBegin(GL_POINTS);
-    glColor4ub(r,g,b,a);
+    glColor4ub(r, g, b, a);
     glVertex2i(x, y);
     glEnd();
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -380,7 +368,43 @@ _INLINE_ void Renderer_AddPixel(int x, int y, int r, int g, int b, int a)
 
 _INLINE_ void Renderer_DrawWallBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
 {
-    glEnable(GL_TEXTURE_2D);
+    glBegin(GL_POINTS);
+    glColor4ub(cr, cg, cb, 64);
+	glVertex2i(x+1, y-1);
+	glVertex2i(x-1, y-1);
+	glVertex2i(x+1, y+1);
+	glVertex2i(x-1, y+1);
+	glColor4ub(cr, cg, cb, 112);
+	glVertex2i(x+1, y);
+	glVertex2i(x-1, y);
+	glVertex2i(x, y+1);
+	glVertex2i(x, y-1);
+    glEnd();
+	
+	/*
+	Renderer_BlendPixel(x+1, y-1, cr, cg, cb, 64);
+	Renderer_BlendPixel(x-1, y-1, cr, cg, cb, 64);
+	Renderer_BlendPixel(x+1, y+1, cr, cg, cb, 64);
+	Renderer_BlendPixel(x-1, y+1, cr, cg, cb, 64);
+	
+	Renderer_BlendPixel(x+1, y, cr, cg, cb, 112);
+	Renderer_BlendPixel(x-1, y, cr, cg, cb, 112);
+	Renderer_BlendPixel(x, y+1, cr, cg, cb, 112);
+	Renderer_BlendPixel(x, y-1, cr, cg, cb, 112);
+	*/
+	
+	/*
+	glPointSize(3.0f);
+	Renderer_BlendPixel(x, y, cr, cg, cb, 64);
+	glPointSize(1.0f);
+	Renderer_BlendPixel(x+1, y, cr, cg, cb, 179);
+	Renderer_BlendPixel(x-1, y, cr, cg, cb, 179);
+	Renderer_BlendPixel(x, y+1, cr, cg, cb, 179);
+	Renderer_BlendPixel(x, y-1, cr, cg, cb, 179);
+	*/
+	
+	/*
+	glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, WallBlobTexture);
     glBegin(GL_QUADS);
     glColor3ub(cr, cg, cb);
@@ -394,24 +418,67 @@ _INLINE_ void Renderer_DrawWallBlob(int x, int y, unsigned char cr, unsigned cha
     glVertex2i(x-2, y+BLOBTEXSIZE-2);
     glEnd();
     glDisable(GL_TEXTURE_2D);
+	*/
 }
 
 _INLINE_ void Renderer_DrawPartBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
 {
-    glEnable(GL_TEXTURE_2D);
+	glBegin(GL_POINTS);
+    glColor4ub(cr, cg, cb, 112);
+	glVertex2i(x+1, y-1);
+	glVertex2i(x-1, y-1);
+	glVertex2i(x+1, y+1);
+	glVertex2i(x-1, y+1);
+	glColor4ub(cr, cg, cb, 223);
+	glVertex2i(x+1, y);
+	glVertex2i(x-1, y);
+	glVertex2i(x, y+1);
+	glVertex2i(x, y-1);
+    glEnd();
+	
+	/*
+	glPointSize(3.0f);
+	Renderer_BlendPixel(x, y, cr, cg, cb, 112);
+	glPointSize(1.0f);
+	Renderer_BlendPixel(x+1, y, cr, cg, cb, 198);
+	Renderer_BlendPixel(x-1, y, cr, cg, cb, 198);
+	Renderer_BlendPixel(x, y+1, cr, cg, cb, 198);
+	Renderer_BlendPixel(x, y-1, cr, cg, cb, 198);
+	*/
+	
+	/*
+	glEnable(GL_POINT_SMOOTH);
+	glPointSize(3.0f);
+	Renderer_BlendPixel(x, y, cr, cg, cb, 223);
+	glPointSize(1.0f);
+	glDisable(GL_POINT_SMOOTH);
+	*/
+	
+	/*
+	Renderer_FillRectangle(x-2, y-2, 4, 4, cr, cg, cb, 112);
+	
+	Renderer_BlendPixel(x+1, y, cr, cg, cb, 198);
+	Renderer_BlendPixel(x-1, y, cr, cg, cb, 198);
+	Renderer_BlendPixel(x, y+1, cr, cg, cb, 198);
+	Renderer_BlendPixel(x, y-1, cr, cg, cb, 198);
+	*/
+	
+	/*
+	glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, PartBlobTexture);
-    glBegin(GL_QUADS);
+    glBegin(GL_TRIANGLE_STRIP);
     glColor3ub(cr, cg, cb);
     glTexCoord2i(1,0);
     glVertex2i(x-2, y-2);
+	glTexCoord2i(1,1);
+    glVertex2i(x-2, y+BLOBTEXSIZE-2);
     glTexCoord2i(0,0);
     glVertex2i(x+BLOBTEXSIZE-2, y-2);
     glTexCoord2i(0,1);
     glVertex2i(x+BLOBTEXSIZE-2, y+BLOBTEXSIZE-2);
-    glTexCoord2i(1,1);
-    glVertex2i(x-2, y+BLOBTEXSIZE-2);
     glEnd();
     glDisable(GL_TEXTURE_2D);
+	*/
 }
 
 void Renderer_DrawDots(int x, int y, int h, int r, int g, int b, int a)
@@ -435,7 +502,7 @@ void Renderer_DrawLine(int x1, int y1, int x2, int y2, int r, int g, int b, int 
 
 _INLINE_ void Renderer_DrawRectangle(int x, int y, int w, int h, int r, int g, int b, int a)
 {
-    glBegin(GL_LINE_STRIP );
+    glBegin(GL_LINE_STRIP);
     glColor4ub(r, g, b, a);
 	glVertex2i(x+1, y);
     glVertex2i(x+1, y+h);
@@ -447,23 +514,23 @@ _INLINE_ void Renderer_DrawRectangle(int x, int y, int w, int h, int r, int g, i
 
 _INLINE_ void Renderer_FillRectangle(int x, int y, int w, int h, int r, int g, int b, int a)
 {
-    glBegin(GL_QUADS);
+    glBegin(GL_TRIANGLE_STRIP);
     glColor4ub(r, g, b, a);
     glVertex2i(x+1, y);
+	glVertex2i(x+1, y+h-1);
     glVertex2i(x+w, y);
     glVertex2i(x+w, y+h-1);
-    glVertex2i(x+1, y+h-1);
     glEnd();
 }
 
 _INLINE_ void Renderer_ClearRectangle(int x, int y, int w, int h)
 {
-    glBegin(GL_QUADS);
+    glBegin(GL_TRIANGLE_STRIP);
     glColor3ub(0,0,0);
     glVertex2i(x+1, y);
+	glVertex2i(x+1, y+h-1);
     glVertex2i(x+w, y);
     glVertex2i(x+w, y+h-1);
-    glVertex2i(x+1, y+h-1);
     glEnd();
 }
 
@@ -472,16 +539,16 @@ _INLINE_ int Renderer_DrawChar(int x, int y, int c, int r, int g, int b, int a)
     char *w = font_data + font_ptrs[c];
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, FontTexture[c]);
-    glBegin(GL_QUADS);
+    glBegin(GL_TRIANGLE_STRIP);
 	glColor4ub(r, g, b, a);
 	glTexCoord2i(0,0);
 	glVertex2i(x, y-1);
+	glTexCoord2i(0,1);
+	glVertex2i(x, y+FONTTEXSIZE-1);
 	glTexCoord2i(1,0);
 	glVertex2i(x+FONTTEXSIZE, y-1);
 	glTexCoord2i(1,1);
 	glVertex2i(x+FONTTEXSIZE, y+FONTTEXSIZE-1);
-	glTexCoord2i(0,1);
-	glVertex2i(x, y+FONTTEXSIZE-1);
 	glEnd();
     glDisable(GL_TEXTURE_2D);
     return x + *w;
@@ -691,8 +758,10 @@ void Renderer_DrawFire()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, GlowTexture);
+	glLoadIdentity();
     glBegin(GL_QUADS);
     for(j=0; j<YRES/CELL; j++)
+	{
         for(i=0; i<XRES/CELL; i++)
         {
             r = fire_r[j][i];
@@ -700,7 +769,7 @@ void Renderer_DrawFire()
             b = fire_b[j][i];
             if(r || g || b)
             {
-                glColor3ub(r, g, b);
+				glColor3ub(r, g, b);
                 glTexCoord2i(1,0);
                 glVertex2i(i*CELL-3, j*CELL-4);
                 glTexCoord2i(0,0);
@@ -733,8 +802,13 @@ void Renderer_DrawFire()
                 fire_b[j][i] = b-4;
             else
                 fire_b[j][i] = 0;
+				
+			glTranslatef(CELL , 0.0f, 0.0f);
         }
+		glTranslatef(-XRES , CELL, 0.0f);
+	}
     glEnd();
     glDisable(GL_TEXTURE_2D);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
 }
