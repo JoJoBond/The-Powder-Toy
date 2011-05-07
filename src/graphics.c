@@ -1336,6 +1336,12 @@ void Graphics_RenderParticles()
 						//Renderer_BlendPixel(nx-1, ny, cr, cg, cb, 96);
 						//Renderer_BlendPixel(nx, ny+1, cr, cg, cb, 96);
 						//Renderer_BlendPixel(nx, ny-1, cr, cg, cb, 96);
+						
+						Renderer_AdditivePart(i, 0.0f);
+						
+						//Renderer_DrawRadioactivePart(nx, ny, cr, cg, cb);
+						
+						/*
 						Renderer_AddPixel(nx, ny, cr, cg, cb, 192);
 						Renderer_AddPixel(nx+1, ny, cr, cg, cb, 96);
 						Renderer_AddPixel(nx-1, ny, cr, cg, cb, 96);
@@ -1353,6 +1359,7 @@ void Graphics_RenderParticles()
 								//Renderer_BlendPixel(nx-tempx, ny-tempy, cr, cg, cb, 5);
 							}
 						}
+						*/
 					}
 					else //if no fancy effects, draw a simple pixel
 					{
@@ -1604,7 +1611,10 @@ void Graphics_RenderParticles()
 				}
 				else if (t==PT_PRTI)
 				{
-					int nxo = 0;
+					//Renderer_DrawPortalOrbit(nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), parts[i].life, parts[i].ctype);
+					
+					Renderer_AdditivePart(i, 0.0f);
+					/*int nxo = 0;
 					int nyo = 0;
 					int fire_rv = 0;
 					float drad = 0.0f;
@@ -1625,7 +1635,8 @@ void Graphics_RenderParticles()
 							}
 						}
 						Renderer_AddPixel(nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 200);
-					}
+					}*/
+					
 					if (DEBUG_MODE) {//draw lines connecting portals
 						Renderer_BlendPixel(nx,ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors),255);
 						if (mousex==(nx) && mousey==(ny))
@@ -1643,7 +1654,12 @@ void Graphics_RenderParticles()
 				}
 				else if (t==PT_PRTO)
 				{
-					int nxo = 0;
+					
+					//Renderer_DrawPortalOrbit(nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), parts[i].life, parts[i].ctype);
+					
+					Renderer_AdditivePart(i, 0.0f);
+					
+					/*int nxo = 0;
 					int nyo = 0;
 					int fire_bv = 0;
 					float drad = 0.0f;
@@ -1664,7 +1680,7 @@ void Graphics_RenderParticles()
 							}
 						}
 						Renderer_AddPixel(nx, ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors), 200);
-					}
+					}*/
 					if (DEBUG_MODE) {//draw lines connecting portals
 						Renderer_BlendPixel(nx,ny, PIXR(ptypes[t].pcolors), PIXG(ptypes[t].pcolors), PIXB(ptypes[t].pcolors),255);
 						if (mousex==(nx) && mousey==(ny))
@@ -2347,6 +2363,10 @@ void Graphics_RenderParticles()
 							Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, gradv);
 							Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, gradv);
 							Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, gradv);
+							Renderer_DrawBombShine(nx, ny, cr, cg, cb, gradv);
+							
+							Renderer_AdditivePart(i, gradv);
+							/*
 							for (newx = 1; gradv>0.5; newx++) {
 								Renderer_AddPixel(nx+newx, ny, cr, cg, cb, gradv);
 								Renderer_AddPixel(nx-newx, ny, cr, cg, cb, gradv);
@@ -2354,7 +2374,7 @@ void Graphics_RenderParticles()
 								Renderer_AddPixel(nx, ny+newx, cr, cg, cb, gradv);
 								Renderer_AddPixel(nx, ny-newx, cr, cg, cb, gradv);
 								gradv = gradv/1.2f;
-							}
+							}*/
 						} else {
 							Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 						}
@@ -2367,6 +2387,8 @@ void Graphics_RenderParticles()
 							int newx = 0;
 							float flicker = rand()%20;
 							float gradv = 4*parts[i].life + flicker;
+							Renderer_AdditivePart(i, gradv);
+							/*
 							for (newx = 0; gradv>0.5; newx++) {
 								Renderer_AddPixel(nx+newx, ny, cr, cg, cb, gradv);
 								Renderer_AddPixel(nx-newx, ny, cr, cg, cb, gradv);
@@ -2375,6 +2397,7 @@ void Graphics_RenderParticles()
 								Renderer_AddPixel(nx, ny-newx, cr, cg, cb, gradv);
 								gradv = gradv/1.5f;
 							}
+							*/
 						} else {
 							Renderer_BlendPixel(nx, ny, cr, cg, cb, 255);
 						}
@@ -2645,9 +2668,12 @@ void Graphics_RenderParticles()
 				
 				Renderer_DrawPartBlob(nx, ny, cr, cg, cb);
 				
-				//if(vid[(ny-1)*YRES+(nx-1)]!=0){
-				//	Renderer_BlendPixel(nx, ny-1, R, G, B, 46);
-				//}
+				/*
+				if(vid[(ny-1)*YRES+(nx-1)]!=0)
+				{
+					Renderer_BlendPixel(nx, ny-1, R, G, B, 46);
+				}
+				*/
 				
 				/*
 				Renderer_BlendPixel(nx+1, ny, cr, cg, cb, 223);
@@ -2663,6 +2689,7 @@ void Graphics_RenderParticles()
 			}
 		}
 	}
+	Renderer_DrawAdditiveParts();
 }
 
 //draws the photon colors in the HUD

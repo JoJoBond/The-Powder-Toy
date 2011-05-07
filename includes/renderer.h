@@ -36,6 +36,14 @@ _EXTERN_ _INLINE_ void Renderer_DrawWallBlob(int x, int y, unsigned char cr, uns
 
 _EXTERN_ _INLINE_ void Renderer_DrawPartBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb);
 
+_EXTERN_ _INLINE_ void Renderer_DrawRadioactivePart(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb);
+
+_EXTERN_ _INLINE_ void Renderer_DrawPortalOrbit(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb, int life, int ctype);
+
+_EXTERN_ _INLINE_ void Renderer_DrawBombShine(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb, float gradv);
+
+_EXTERN_ _INLINE_ void Renderer_AdditivePart(int id, float info1);
+
 void Renderer_DrawDots(int x, int y, int h, int r, int g, int b, int a);
 
 void Renderer_DrawLine(int x1, int y1, int x2, int y2, int r, int g, int b, int a);
@@ -65,3 +73,7 @@ void Renderer_DrawImage(pixel *img, int x, int y, int w, int h, int a);
 void Renderer_DrawAir();
 
 void Renderer_DrawFire();
+
+void Renderer_DrawAdditiveParts();
+
+

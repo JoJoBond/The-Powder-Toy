@@ -46,6 +46,12 @@ GLuint GlowList = 0;
 unsigned char PersistentTick=0;
 unsigned char *StateMemory;
 
+int AdditiveParts[NPART];
+float AdditivePartsInfo[NPART];
+unsigned int APCurrentPos = 0;
+unsigned int APICurrentPos = 0;
+
+
 void Renderer_Init()
 {
     StateMemory = malloc((XRES+BARSIZE)*(YRES+MENUSIZE)*3*STATESLOTS);
@@ -120,6 +126,7 @@ void Renderer_Init()
     glPushMatrix();
     glLoadIdentity();
     glEnable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
@@ -481,6 +488,97 @@ _INLINE_ void Renderer_DrawPartBlob(int x, int y, unsigned char cr, unsigned cha
 	*/
 }
 
+_INLINE_ void Renderer_DrawRadioactivePart(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
+{
+		/*
+	glColor4ub(cr, cg, cb, 5);
+	glVertex2i(x+2, y+2);
+	glVertex2i(x+2, y-2);
+	glVertex2i(x-2, y-2);
+	glVertex2i(x-2, y+2);
+	glVertex2i(x+3, y+3);
+	glVertex2i(x+3, y-3);
+	glVertex2i(x-3, y-3);
+	glVertex2i(x-3, y+3);
+	glVertex2i(x+4, y+4);
+	glVertex2i(x+4, y-4);
+	glVertex2i(x-4, y-4);
+	glVertex2i(x-4, y+4);
+	glVertex2i(x+5, y+5);
+	glVertex2i(x+5, y-5);
+	glVertex2i(x-5, y-5);
+	glVertex2i(x-5, y+5);
+	glVertex2i(x+6, y+6);
+	glVertex2i(x+6, y-6);
+	glVertex2i(x-6, y-6);
+	glVertex2i(x-6, y+6);
+	*/
+}
+
+_INLINE_ void Renderer_DrawPortalOrbit(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb, int life, int ctype)
+{
+	int torbd[4] = {0, 0, 0, 0};
+	int torbl[4] = {0, 0, 0, 0};
+	int nxo = 0;
+	int nyo = 0;
+	unsigned char r;
+	int fire_rv = 0;
+	float drad = 0.0f;
+	float ddist = 0.0f;
+	orbitalparts_get(life, ctype, torbd, torbl);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	glBegin(GL_POINTS);
+	for (r = 0; r < 4; r++)
+	{
+		ddist = ((float)torbd[r])/16.0f;
+		drad = (M_PI * ((float)torbl[r]) / 180.0f)*1.41f;
+		nxo = ddist*cos(drad);
+		nyo = ddist*sin(drad);
+		if (y+nyo>0 && y+nyo<YRES && x+nxo>0 && x+nxo<XRES)
+		{
+			glColor4ub(cr, cg, cb, 255-torbd[r]);
+			glVertex2i(x+nxo, y+nyo);
+			if (cmode == CM_FIRE && r == 1)
+			{
+				fire_rv = fire_r[(y+nyo)/CELL][(x+nxo)/CELL];
+				fire_rv += 1;
+				if (fire_rv>255)
+					fire_rv = 255;
+				fire_r[(y+nyo)/CELL][(x+nxo)/CELL] = fire_rv;
+			}
+		}
+		glColor4ub(cr, cg, cb, 200);
+		glVertex2i(x, y);
+	}
+	glEnd();
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+_INLINE_ void Renderer_DrawBombShine(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb, float gradv)
+{
+	int newx;
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	glBegin(GL_POINTS);
+	for (newx = 1; gradv>0.5; newx++)
+	{
+		glColor4ub(cr, cg, cb, gradv);
+		glVertex2i(x+newx, y);
+		glVertex2i(x-newx, y);
+		glVertex2i(x, y+newx);
+		glVertex2i(x, y-newx);
+		gradv = gradv/1.2f;
+	}
+	glEnd();
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+_INLINE_ void Renderer_AdditivePart(int id, float info1)
+{
+	AdditiveParts[APCurrentPos++] = id;
+	if(info1)
+		AdditivePartsInfo[APICurrentPos++] = info1;
+}
+
 void Renderer_DrawDots(int x, int y, int h, int r, int g, int b, int a)
 {
     int i;
@@ -572,7 +670,10 @@ _INLINE_ void Renderer_XORPixel(int x, int y)
 
 _INLINE_ void Renderer_XORLine(int x1, int y1, int x2, int y2)
 {
-    int cp=abs(y2-y1)>abs(x2-x1), x, y, dx, dy, sy;
+    glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
+	glBegin(GL_POINTS);
+	glColor3ub(0xFF, 0xFF, 0xFF);
+	int cp=abs(y2-y1)>abs(x2-x1), x, y, dx, dy, sy;
     float e, de;
     if(cp)
     {
@@ -604,9 +705,15 @@ _INLINE_ void Renderer_XORLine(int x1, int y1, int x2, int y2)
     for(x=x1; x<=x2; x++)
     {
         if(cp)
-            Renderer_XORPixel(y, x);
+		{
+            //Renderer_XORPixel(y, x);
+			glVertex2i(y, x);
+		}
         else
-            Renderer_XORPixel(x, y);
+		{
+            //Renderer_XORPixel(x, y);
+			glVertex2i(x, y);
+		}
         e += de;
         if(e >= 0.5f)
         {
@@ -614,21 +721,33 @@ _INLINE_ void Renderer_XORLine(int x1, int y1, int x2, int y2)
             e -= 1.0f;
         }
     }
+	glEnd();
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 _INLINE_ void Renderer_XORRectangle(int x, int y, int w, int h)
 {
     int i;
+	
+	glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
+    glBegin(GL_POINTS);
+    glColor3ub(0xFF, 0xFF, 0xFF);
     for(i=0; i<w; i+=2)
     {
-        Renderer_XORPixel(x+i, y);
-        Renderer_XORPixel(x+i, y+h-1);
+        //Renderer_XORPixel(x+i, y);
+        //Renderer_XORPixel(x+i, y+h-1);
+		glVertex2i(x+i, y);
+		glVertex2i(x+i, y+h-1);
     }
     for(i=2; i<h; i+=2)
     {
-        Renderer_XORPixel(x, y+i);
-        Renderer_XORPixel(x+w-1, y+i);
+        //Renderer_XORPixel(x, y+i);
+        //Renderer_XORPixel(x+w-1, y+i);
+		glVertex2i(x, y+i);
+		glVertex2i(x+w-1, y+i);
     }
+	glEnd();
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void Renderer_DrawZoom()
@@ -700,12 +819,9 @@ void Renderer_DrawZoom()
 
 void Renderer_GrabPersistent()
 {
-    //glReadPixels(0, MENUSIZE, XRES, YRES, GL_RGB, GL_UNSIGNED_BYTE, SecondaryBuffer);
 	glFinish();
-	
 	glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
 	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, MENUSIZE, SCRNTEXSIZE, SCRNTEXSIZE);
-	
 	glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
 	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, SCRNTEXSIZE, MENUSIZE, SCRNTEXSIZE, SCRNTEXSIZE);
 }
@@ -803,12 +919,130 @@ void Renderer_DrawFire()
             else
                 fire_b[j][i] = 0;
 				
-			glTranslatef(CELL , 0.0f, 0.0f);
+			//glTranslatef(CELL , 0.0f, 0.0f);
         }
-		glTranslatef(-XRES , CELL, 0.0f);
+		//glTranslatef(-XRES , CELL, 0.0f);
 	}
     glEnd();
     glDisable(GL_TEXTURE_2D);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
+}
+
+void Renderer_DrawAdditiveParts()
+{
+	if(!APCurrentPos)
+		return;
+		
+	int cr, cg, cb, nx, ny, t, APICount = 0;
+	float gradv;
+	
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	
+	for(int i = 0; i < APCurrentPos; i++)
+	{
+		t = parts[AdditiveParts[i]].type;
+		nx = (int)(parts[AdditiveParts[i]].x+0.5f);
+		ny = (int)(parts[AdditiveParts[i]].y+0.5f);
+		cr = PIXR(ptypes[t].pcolors);
+		cg = PIXG(ptypes[t].pcolors);
+		cb = PIXB(ptypes[t].pcolors);
+		
+		if(t == PT_PRTI || t == PT_PRTO)
+		{
+			int torbd[4] = {0, 0, 0, 0};
+			int torbl[4] = {0, 0, 0, 0};
+			int nxo = 0;
+			int nyo = 0;
+			unsigned char r;
+			int fire_rv = 0;
+			float drad = 0.0f;
+			float ddist = 0.0f;
+			orbitalparts_get(parts[AdditiveParts[i]].life, parts[AdditiveParts[i]].ctype, torbd, torbl);
+			glBegin(GL_POINTS);
+			for (r = 0; r < 4; r++)
+			{
+				ddist = ((float)torbd[r])/16.0f;
+				drad = (M_PI * ((float)torbl[r]) / 180.0f)*1.41f;
+				nxo = ddist*cos(drad);
+				nyo = ddist*sin(drad);
+				if (ny+nyo>0 && ny+nyo<YRES && nx+nxo>0 && nx+nxo<XRES)
+				{
+					glColor4ub(cr, cg, cb, 255-torbd[r]);
+					glVertex2i(nx+nxo, ny+nyo);
+					if (cmode == CM_FIRE && r == 1)
+					{
+						fire_rv = fire_r[(ny+nyo)/CELL][(nx+nxo)/CELL];
+						fire_rv += 1;
+						if (fire_rv>255)
+							fire_rv = 255;
+						fire_r[(ny+nyo)/CELL][(nx+nxo)/CELL] = fire_rv;
+					}
+				}
+				glColor4ub(cr, cg, cb, 200);
+				glVertex2i(nx, ny);
+			}
+			glEnd();
+		}
+		else if(t == PT_BOMB)
+		{
+			int newx;
+			gradv = AdditivePartsInfo[APICount++];
+			if(parts[AdditiveParts[i]].tmp==0)
+			{
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+				glBegin(GL_POINTS);
+				for (newx = 1; gradv>0.5; newx++)
+				{
+					glColor4ub(cr, cg, cb, gradv);
+					glVertex2i(nx+newx, ny);
+					glVertex2i(nx-newx, ny);
+					glVertex2i(nx, ny+newx);
+					glVertex2i(nx, ny-newx);
+					gradv = gradv/1.2f;
+				}
+				glEnd();
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			}
+			else if (parts[AdditiveParts[i]].tmp==1)
+			{
+				for (newx = 0; gradv>0.5; newx++)
+				{
+					glColor4ub(cr, cg, cb, gradv);
+					glVertex2i(nx+newx, ny);
+					glVertex2i(nx-newx, ny);
+					glVertex2i(nx, ny+newx);
+					glVertex2i(nx, ny-newx);
+					gradv = gradv/1.5f;
+				}
+			}
+		}
+		else if(ptypes[t].properties&PROP_RADIOACTIVE)
+		{
+			glBegin(GL_LINES);
+			glColor4ub(cr, cg, cb, 5);
+			glVertex2i(nx+2, ny+1);
+			glVertex2i(nx+6, ny+5);
+			glVertex2i(nx+2, ny-2);
+			glVertex2i(nx+6, ny-6);
+			glVertex2i(nx-1, ny-2);
+			glVertex2i(nx-5, ny-6);
+			glVertex2i(nx-1, ny+1);
+			glVertex2i(nx-5, ny+5);
+			glEnd();
+			glBegin(GL_POINTS);
+			glColor4ub(cr, cg, cb, 192);
+			glVertex2i(nx, ny);
+			glColor4ub(cr, cg, cb, 96);
+			glVertex2i(nx+1, ny);
+			glVertex2i(nx-1, ny);
+			glVertex2i(nx, ny+1);
+			glVertex2i(nx, ny-1);
+			glEnd();
+		}
+	}
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
+	APCurrentPos = 0;
+	APICurrentPos = 0;
 }
