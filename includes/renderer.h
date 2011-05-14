@@ -1,3 +1,5 @@
+#ifndef RENDERER_H
+#define RENDERER_H
 #include <SDL/SDL.h>
 #include "defines.h"
 #include "hmap.h"
@@ -9,8 +11,6 @@
 #define PIXR(x) ((x)>>16)
 #define PIXG(x) (((x)>>8)&0xFF)
 #define PIXB(x) ((x)&0xFF)
-
-extern int sdl_scale;
 
 void Renderer_Init();
 
@@ -35,12 +35,6 @@ _EXTERN_ _INLINE_ void Renderer_AddPixel(int x, int y, int r, int g, int b, int 
 _EXTERN_ _INLINE_ void Renderer_DrawWallBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb);
 
 _EXTERN_ _INLINE_ void Renderer_DrawPartBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb);
-
-_EXTERN_ _INLINE_ void Renderer_DrawRadioactivePart(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb);
-
-_EXTERN_ _INLINE_ void Renderer_DrawPortalOrbit(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb, int life, int ctype);
-
-_EXTERN_ _INLINE_ void Renderer_DrawBombShine(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb, float gradv);
 
 _EXTERN_ _INLINE_ void Renderer_AdditivePart(int id, float info1);
 
@@ -76,4 +70,4 @@ void Renderer_DrawFire();
 
 void Renderer_DrawAdditiveParts();
 
-
+#endif

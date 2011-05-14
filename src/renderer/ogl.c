@@ -17,7 +17,6 @@
 #include <powder.h>
 #include <renderer.h>
 #include <graphics.h>
-//#define INCLUDE_FONTDATA
 #include <font.h>
 #include <misc.h>
 #include <icon.h>
@@ -42,7 +41,6 @@ GLuint ScreenTexture[1];
 GLuint FontTexture[255];
 GLuint GlowList = 0;
 
-//int sdl_scale = 1;
 unsigned char PersistentTick=0;
 unsigned char *StateMemory;
 
@@ -93,16 +91,36 @@ void Renderer_Init()
         exit(1);
     }
     atexit(SDL_Quit);
+	SDL_VideoInfo* info = SDL_GetVideoInfo();
+	if(!info)
+	{
+		fprintf(stderr, "Video query failed: %s\n", SDL_GetError());
+		exit(1);
+	}
+	
+	int bpp = info->vfmt->BitsPerPixel;
+	
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    sdl_scrn=SDL_SetVideoMode(XRES*sdl_scale + BARSIZE*sdl_scale,YRES*sdl_scale + MENUSIZE*sdl_scale,32,SDL_OPENGL);
+	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
+	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 5);
+	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 5);
+	
+	int mode = SDL_OPENGL;
+	
+	if(kiosk_enable)
+		mode |= SDL_FULLSCREEN;
+	
+	sdl_scrn = SDL_SetVideoMode(sdl_scale*(XRES + BARSIZE), sdl_scale*(YRES + MENUSIZE), bpp, mode);
+
     if(!sdl_scrn)
     {
         fprintf(stderr, "Creating window: %s\n", SDL_GetError());
         exit(1);
     }
     _glBlendEquation=(GL_BlendEquation) SDL_GL_GetProcAddress("glBlendEquation");
-    if(!_glBlendEquation){
-        fprintf(stderr, "Blend Equation Extensions not present.\n");
+    if(!_glBlendEquation)
+	{
+        fprintf(stderr, "glBlendEquation not supported.\n");
         exit(1);
     }
     SDL_WM_SetCaption("The Powder Toy", "Powder Toy");
@@ -121,12 +139,18 @@ void Renderer_Init()
     SDL_EnableUNICODE(1);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, (XRES+BARSIZE)*sdl_scale,(YRES+MENUSIZE)*sdl_scale-1, -1, -1, 1);
+    glOrtho(0, (XRES+BARSIZE),(YRES+MENUSIZE)-1, -1, -1, 1);
+	//glViewport( 0, 0, (XRES+BARSIZE),(YRES+MENUSIZE)-1);
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     glLoadIdentity();
+	
+	glPointSize(sdl_scale);
+	glLineWidth(sdl_scale);
+	
     glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
+	
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
@@ -157,56 +181,6 @@ void Renderer_Init()
 	TextureInit(SCRNTEXSIZE, GL_RGB, ScreenTexture[0], 0);
 	
 	TextureInit(SCRNTEXSIZE, GL_RGB, ScreenTexture[1], 0);
-	
-	/*
-    glGenTextures(1, &WallBlobTexture);
-    glBindTexture(GL_TEXTURE_2D, WallBlobTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, BLOBTEXSIZE, BLOBTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &WallBlobAlphaTmp);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	
-	glGenTextures(1, &PartBlobTexture);
-    glBindTexture(GL_TEXTURE_2D, PartBlobTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, BLOBTEXSIZE, BLOBTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &PartBlobAlphaTmp);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    
-    glGenTextures(1, &GlowTexture);
-    glBindTexture(GL_TEXTURE_2D, GlowTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, GLOWTEXSIZE, GLOWTEXSIZE, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &GlowAlphaTmp);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	
-	glGenTextures(1, &ZoomTexture);
-	glBindTexture(GL_TEXTURE_2D, ZoomTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ZOOMTEXSIZE, ZOOMTEXSIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	
-	glGenTextures(1, &ScreenTexture[0]);
-	glBindTexture(GL_TEXTURE_2D, ScreenTexture[0]);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCRNTEXSIZE, SCRNTEXSIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-
-	glGenTextures(1, &ScreenTexture[1]);
-	glBindTexture(GL_TEXTURE_2D, ScreenTexture[1]);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCRNTEXSIZE, SCRNTEXSIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	*/
 	
 	Renderer_InitFont();
 	
@@ -488,90 +462,6 @@ _INLINE_ void Renderer_DrawPartBlob(int x, int y, unsigned char cr, unsigned cha
 	*/
 }
 
-_INLINE_ void Renderer_DrawRadioactivePart(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
-{
-		/*
-	glColor4ub(cr, cg, cb, 5);
-	glVertex2i(x+2, y+2);
-	glVertex2i(x+2, y-2);
-	glVertex2i(x-2, y-2);
-	glVertex2i(x-2, y+2);
-	glVertex2i(x+3, y+3);
-	glVertex2i(x+3, y-3);
-	glVertex2i(x-3, y-3);
-	glVertex2i(x-3, y+3);
-	glVertex2i(x+4, y+4);
-	glVertex2i(x+4, y-4);
-	glVertex2i(x-4, y-4);
-	glVertex2i(x-4, y+4);
-	glVertex2i(x+5, y+5);
-	glVertex2i(x+5, y-5);
-	glVertex2i(x-5, y-5);
-	glVertex2i(x-5, y+5);
-	glVertex2i(x+6, y+6);
-	glVertex2i(x+6, y-6);
-	glVertex2i(x-6, y-6);
-	glVertex2i(x-6, y+6);
-	*/
-}
-
-_INLINE_ void Renderer_DrawPortalOrbit(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb, int life, int ctype)
-{
-	int torbd[4] = {0, 0, 0, 0};
-	int torbl[4] = {0, 0, 0, 0};
-	int nxo = 0;
-	int nyo = 0;
-	unsigned char r;
-	int fire_rv = 0;
-	float drad = 0.0f;
-	float ddist = 0.0f;
-	orbitalparts_get(life, ctype, torbd, torbl);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-	glBegin(GL_POINTS);
-	for (r = 0; r < 4; r++)
-	{
-		ddist = ((float)torbd[r])/16.0f;
-		drad = (M_PI * ((float)torbl[r]) / 180.0f)*1.41f;
-		nxo = ddist*cos(drad);
-		nyo = ddist*sin(drad);
-		if (y+nyo>0 && y+nyo<YRES && x+nxo>0 && x+nxo<XRES)
-		{
-			glColor4ub(cr, cg, cb, 255-torbd[r]);
-			glVertex2i(x+nxo, y+nyo);
-			if (cmode == CM_FIRE && r == 1)
-			{
-				fire_rv = fire_r[(y+nyo)/CELL][(x+nxo)/CELL];
-				fire_rv += 1;
-				if (fire_rv>255)
-					fire_rv = 255;
-				fire_r[(y+nyo)/CELL][(x+nxo)/CELL] = fire_rv;
-			}
-		}
-		glColor4ub(cr, cg, cb, 200);
-		glVertex2i(x, y);
-	}
-	glEnd();
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-}
-
-_INLINE_ void Renderer_DrawBombShine(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb, float gradv)
-{
-	int newx;
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-	glBegin(GL_POINTS);
-	for (newx = 1; gradv>0.5; newx++)
-	{
-		glColor4ub(cr, cg, cb, gradv);
-		glVertex2i(x+newx, y);
-		glVertex2i(x-newx, y);
-		glVertex2i(x, y+newx);
-		glVertex2i(x, y-newx);
-		gradv = gradv/1.2f;
-	}
-	glEnd();
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-}
-
 _INLINE_ void Renderer_AdditivePart(int id, float info1)
 {
 	AdditiveParts[APCurrentPos++] = id;
@@ -785,6 +675,7 @@ void Renderer_DrawZoom()
     glEnd();
 	*/
 	
+	// This is very fast
     glBindTexture(GL_TEXTURE_2D,ZoomTexture);
 	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, zoom_x, YRES + MENUSIZE - ZSIZE - zoom_y, ZOOMTEXSIZE, ZOOMTEXSIZE);
 

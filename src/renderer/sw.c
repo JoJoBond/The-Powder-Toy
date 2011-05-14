@@ -21,7 +21,6 @@ void Renderer_Intern_AddPixel(int x, int y, int r, int g, int b, int a);
 unsigned int fire_alpha[CELL*3][CELL*3];
 unsigned char PersistentTick=0;
 SDL_Surface *sdl_scrn;
-int sdl_scale = 1;
 pixel *PrimaryBuffer;
 pixel *SecondaryBuffer;
 pixel *StateMemory;
@@ -227,7 +226,7 @@ _INLINE_ void Renderer_BlendPixel(int x, int y, int r, int g, int b, int a)
     PrimaryBuffer[y*(XRES+BARSIZE)+x] = PIXRGB(r,g,b);
 }
 
-void Renderer_DrawBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
+void Renderer_DrawWallBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
 {
     Renderer_BlendPixel(x, y, cr, cg, cb, 255);
     Renderer_BlendPixel(x+1, y, cr, cg, cb, 112);

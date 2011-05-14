@@ -2,7 +2,7 @@
 #define DEFINE_H
 
 #if defined(WIN32) && !defined(__GNUC__)
-#define _INLINE_  _inline
+#define _INLINE_ _inline
 #define _EXTERN_
 #else
 #define _INLINE_ inline

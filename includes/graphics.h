@@ -38,7 +38,7 @@
 
 extern unsigned cmode;
 extern SDL_Surface *sdl_scrn;
-extern int sdl_scale;
+extern unsigned int sdl_scale;
 extern unsigned frame_idx;
 
 extern unsigned char fire_r[YRES/CELL][XRES/CELL];

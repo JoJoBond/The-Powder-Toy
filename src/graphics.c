@@ -23,7 +23,7 @@
 
 unsigned cmode = CM_FIRE;
 SDL_Surface *sdl_scrn;
-int sdl_scale = 1;
+unsigned int sdl_scale = 1;
 unsigned int frame_idx;
 
 unsigned char fire_r[YRES/CELL][XRES/CELL];
@@ -2363,7 +2363,7 @@ void Graphics_RenderParticles()
 							Renderer_BlendPixel(nx-1, ny-1, cr, cg, cb, gradv);
 							Renderer_BlendPixel(nx+1, ny+1, cr, cg, cb, gradv);
 							Renderer_BlendPixel(nx-1, ny+1, cr, cg, cb, gradv);
-							Renderer_DrawBombShine(nx, ny, cr, cg, cb, gradv);
+							//Renderer_DrawBombShine(nx, ny, cr, cg, cb, gradv);
 							
 							Renderer_AdditivePart(i, gradv);
 							/*
@@ -3169,7 +3169,7 @@ void Graphics_RenderCursor(int x, int y, int t, int rx, int ry)
 		}
 	}
 }
-
+/*
 void sdl_open(void)
 {
 	if (SDL_Init(SDL_INIT_VIDEO)<0)
@@ -3199,7 +3199,7 @@ void sdl_open(void)
 	SDL_EnableUNICODE(1);
 	//SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 }
-
+*/
 _INLINE_ void Graphics_RenderWalls()
 {
 	if (cmode==CM_BLOB)

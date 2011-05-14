@@ -2746,13 +2746,6 @@ int main(int argc, char *argv[])
 	pfree = 0;
 	fire_bg=calloc(XRES*YRES, PIXELSIZE);
 	
-	Renderer_Init();
-	clear_sim();
-
-	//fbi_img = render_packed_rgb(fbi, FBI_W, FBI_H, FBI_CMP);
-
-	load_presets();
-
 	for (i=1; i<argc; i++)
 	{
 		if (!strncmp(argv[i], "scale:", 6))
@@ -2804,6 +2797,13 @@ int main(int argc, char *argv[])
 		}
 
 	}
+	
+	Renderer_Init();
+	clear_sim();
+
+	//fbi_img = render_packed_rgb(fbi, FBI_W, FBI_H, FBI_CMP);
+
+	load_presets();
 
 	save_presets(0);
 
