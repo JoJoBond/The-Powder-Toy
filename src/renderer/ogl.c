@@ -146,8 +146,7 @@ void Renderer_Init()
 		yover = sdl_scrn->h - sdl_scale*(YRES + MENUSIZE);
 	}
 	
-	
-    glOrtho(0, (XRES+BARSIZE) + xover,(YRES+MENUSIZE)-1 + yover, -1, -1, 1);
+    glOrtho(0, (XRES+BARSIZE) + xover/sdl_scale,(YRES+MENUSIZE)-1 + yover/sdl_scale, -1, -1, 1);
 	//glViewport( 0, 0, (XRES+BARSIZE),(YRES+MENUSIZE)-1);
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
