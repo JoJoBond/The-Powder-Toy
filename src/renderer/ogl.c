@@ -49,7 +49,6 @@ float AdditivePartsInfo[NPART];
 unsigned int APCurrentPos = 0;
 unsigned int APICurrentPos = 0;
 
-
 void Renderer_Init()
 {
     StateMemory = malloc((XRES+BARSIZE)*(YRES+MENUSIZE)*3*STATESLOTS);
@@ -139,7 +138,16 @@ void Renderer_Init()
     SDL_EnableUNICODE(1);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, (XRES+BARSIZE),(YRES+MENUSIZE)-1, -1, -1, 1);
+	
+	int xover = 0, yover = 0;
+	if(kiosk_enable)
+	{
+		xover = sdl_scrn->w - sdl_scale*(XRES + BARSIZE);
+		yover = sdl_scrn->h - sdl_scale*(YRES + MENUSIZE);
+	}
+	
+	
+    glOrtho(0, (XRES+BARSIZE) + xover,(YRES+MENUSIZE)-1 + yover, -1, -1, 1);
 	//glViewport( 0, 0, (XRES+BARSIZE),(YRES+MENUSIZE)-1);
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
@@ -150,6 +158,8 @@ void Renderer_Init()
 	
     glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
+	
+	glShadeModel(GL_FLAT);
 	
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
@@ -734,8 +744,12 @@ void Renderer_DrawAir()
 {
     int x, y, i, j;
     pixel c;
-    glBegin(GL_QUADS);
+    //glBegin(GL_QUADS);
     for(y=0; y<YRES/CELL; y++)
+	{
+		glBegin(GL_TRIANGLE_STRIP);
+		glVertex2i(0, y*CELL-1);
+		glVertex2i(0, y*CELL+CELL-1);
         for(x=0; x<XRES/CELL; x++)
         {
             if(cmode)
@@ -749,14 +763,20 @@ void Renderer_DrawAir()
                 c  = PIXRGB(clamp_flt(fabsf(vx[y][x]), 0.0f, 8.0f),
                             clamp_flt(pv[y][x], 0.0f, 8.0f),
                             clamp_flt(fabsf(vy[y][x]), 0.0f, 8.0f));
-                
+
             glColor4ub(PIXR(c),PIXG(c),PIXB(c), 255);
-            glVertex2i(x*CELL, y*CELL-1);
+			glVertex2i(x*CELL+CELL, y*CELL-1);
+            glVertex2i(x*CELL+CELL, y*CELL+CELL-1);
+            /*
+			glVertex2i(x*CELL, y*CELL-1);
             glVertex2i(x*CELL+CELL, y*CELL-1);
             glVertex2i(x*CELL+CELL, y*CELL+CELL-1);
             glVertex2i(x*CELL, y*CELL+CELL-1);
+			*/
         }
-    glEnd();
+		glEnd();
+	}
+    //glEnd();
 }
 
 void Renderer_DrawFire()
