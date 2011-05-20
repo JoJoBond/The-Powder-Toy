@@ -85,7 +85,7 @@ int GetTextPosXY(char *s, int width, int w, int h);
 
 int GetTextWrapHeight(char *s, int width);
 
-void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a);
+//void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a);
 
 void Graphics_RenderIcon(int x, int y, char ch, int flag);
 

@@ -56,6 +56,8 @@ _EXTERN_ _INLINE_ void Renderer_XORLine(int x1, int y1, int x2, int y2);
 
 _EXTERN_ _INLINE_ void Renderer_XORRectangle(int x, int y, int w, int h);
 
+_EXTERN_ _INLINE_ void Renderer_XORFullRectangle(int x, int y, int w, int h);
+
 void Renderer_DrawZoom();
 
 void Renderer_GrabPersistent();

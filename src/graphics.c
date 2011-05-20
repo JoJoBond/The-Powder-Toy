@@ -71,6 +71,7 @@ pixel *rescale_img(pixel *src, int sw, int sh, int *qw, int *qh, int f)
 }
 
 //an easy way to draw a blob
+/*
 void drawblob(pixel *vid, int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
 {
 	blendpixel(vid, x+1, y, cr, cg, cb, 112);
@@ -83,6 +84,7 @@ void drawblob(pixel *vid, int x, int y, unsigned char cr, unsigned char cg, unsi
 	blendpixel(vid, x+1, y+1, cr, cg, cb, 64);
 	blendpixel(vid, x-1, y+1, cr, cg, cb, 64);
 }
+*/
 
 //old and unused equation to draw walls
 /*
@@ -667,6 +669,7 @@ void Graphics_RenderMenu(int i, int hover)
 }
 
 //draws a pixel, identical to blendpixel(), except blendpixel has OpenGL support
+/*
 _INLINE_ void drawpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 {
 	pixel t;
@@ -681,6 +684,7 @@ _INLINE_ void drawpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 	}
 	vid[y*(XRES+BARSIZE)+x] = PIXRGB(r,g,b);
 }
+*/
 
 int Graphics_RenderText(int x, int y, const char *s, int r, int g, int b, int a)
 {
@@ -946,6 +950,7 @@ int GetTextWrapHeight(char *s, int width)
 }
 
 //the most used function for drawing a pixel, because it has OpenGL support, which is not fully implemented.
+/*
 _INLINE_ void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 {
 #ifdef OpenGL
@@ -972,6 +977,7 @@ _INLINE_ void blendpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 	vid[y*(XRES+BARSIZE)+x] = PIXRGB(r,g,b);
 #endif //OpenGL
 }
+*/
 
 void Graphics_RenderIcon(int x, int y, char ch, int flag)
 {
@@ -990,6 +996,7 @@ void Graphics_RenderIcon(int x, int y, char ch, int flag)
 	}
 }
 
+/*
 void draw_air(pixel *vid)
 {
 	int x, y, i, j;
@@ -1051,8 +1058,10 @@ void draw_air(pixel *vid)
 					vid[(x*CELL+i) + (y*CELL+j)*(XRES+BARSIZE)] = c;
 		}
 }
+*/
 
 //adds color to a pixel, does not overwrite.
+/*
 void addpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 {
 	pixel t;
@@ -1070,6 +1079,7 @@ void addpixel(pixel *vid, int x, int y, int r, int g, int b, int a)
 		b = 255;
 	vid[y*(XRES+BARSIZE)+x] = PIXRGB(r,g,b);
 }
+*/
 
 //the main function for drawing the particles
 void Graphics_RenderParticles()
@@ -3109,17 +3119,54 @@ corrupt:
 //draws the cursor
 void Graphics_RenderCursor(int x, int y, int t, int rx, int ry)
 {
-	int i,j,c;
+	int i,j,k,l,c;
 	if (t<PT_NUM||t==SPC_AIR||t==SPC_HEAT||t==SPC_COOL||t==SPC_VACUUM)
 	{
-		if (rx+ry<=0)
+		if(!(rx|ry))
 			Renderer_XORPixel(x, y);
 		else
 		{
-			if (rx<=0 || ry<=0)
-				Renderer_XORPixel(x, y);
-			if (CURRENT_BRUSH==SQUARE_BRUSH)
+			if(CURRENT_BRUSH==SQUARE_BRUSH)
 			{
+				c = x - rx;
+				i = y - ry;
+				k = y + ry;
+				l = x + rx;
+				for(j=0; j <= 2*rx; j++)
+				{
+					Renderer_XORPixel(c+j, i);
+					if(ry)
+						Renderer_XORPixel(c+j, k);
+				}
+				for(j=1; j < 2*ry; j++)
+				{
+					Renderer_XORPixel(c, i+j);
+					if(rx)
+						Renderer_XORPixel(l, i+j);
+				}
+				
+				/*
+				c = x - rx;
+				i = y - ry;
+				for(j=0; j <= 2*max(ry,rx); j++)
+				{
+					if(rx && j <= 2*rx)
+					{
+						Renderer_XORPixel(c+j, i);
+						if(ry)
+							Renderer_XORPixel(c+j, y+ry);
+					}
+					if(ry && j>0 && j < 2*ry)
+					{
+						Renderer_XORPixel(c, i+j);
+						if(rx)
+							Renderer_XORPixel(x+rx, i+j);
+					}
+					if(!rx && ry && (j == 0 || j == 2*ry))
+						Renderer_XORPixel(c, i+j);
+				}
+				*/
+				/*
 				for (j=0; j<=ry; j++)
 					for (i=0; i<=rx; i++)
 						if (i*j<=ry*rx && ((i+1)>rx || (j+1)>ry))
@@ -3129,8 +3176,23 @@ void Graphics_RenderCursor(int x, int y, int t, int rx, int ry)
 							if (i&&j)Renderer_XORPixel(x+i, y-j);
 							if (i&&j)Renderer_XORPixel(x-i, y+j);
 						}
+				*/
 			}
 			else if (CURRENT_BRUSH==CIRCLE_BRUSH)
+			{
+				/*unsigned int steps = 4*max(rx, ry) - 1;
+				float step = 2.0f * 3.1415926535897932384626433832795f / (float)steps;
+				float angle = 0.0f;
+				for(j=0; j < steps; j++)
+				{
+					k = sin(angle)*rx;
+					l = cos(angle)*ry;
+					
+					Renderer_XORPixel(x+k, y+l);
+					
+					angle += step;
+				}
+				*/
 				for (j=0; j<=ry; j++)
 					for (i=0; i<=rx; i++)
 						if ((pow(i,2))/(pow(rx,2))+(pow(j,2))/(pow(ry,2))<=1 && ((pow(i+1,2))/(pow(rx,2))+(pow(j,2))/(pow(ry,2))>1 || (pow(i,2))/(pow(rx,2))+(pow(j+1,2))/(pow(ry,2))>1))
@@ -3140,6 +3202,7 @@ void Graphics_RenderCursor(int x, int y, int t, int rx, int ry)
 							if (i) Renderer_XORPixel(x-i, y+j);
 							if (i&&j) Renderer_XORPixel(x-i, y-j);
 						}
+			}
 		}
 	}
 	else //wall cursor
@@ -3151,8 +3214,8 @@ void Graphics_RenderCursor(int x, int y, int t, int rx, int ry)
 
 		tc = !((c%(CELL*2))==0);
 
-		x -= c/2;
-		y -= c/2;
+		x -= c>>1;
+		y -= c>>1;
 
 		x += tc*(CELL/2);
 		y += tc*(CELL/2);
@@ -3169,6 +3232,7 @@ void Graphics_RenderCursor(int x, int y, int t, int rx, int ry)
 		}
 	}
 }
+
 /*
 void sdl_open(void)
 {
@@ -3200,6 +3264,7 @@ void sdl_open(void)
 	//SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 }
 */
+
 _INLINE_ void Graphics_RenderWalls()
 {
 	if (cmode==CM_BLOB)
